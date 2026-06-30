@@ -18,7 +18,7 @@
     *   `UIPopup.mlua` / `UIToast.mlua`: UI 팝업 및 토스트 알림 제어 스크립트
 *   **`ui/` / `map/`**: 월드 UI 레이아웃과 맵 환경설정 데이터가 포함되어 있습니다.
 *   **`Environment/` / `Global/`**: 전역 설정 및 환경 변수 관련 데이터입니다.
-*   **`.agents/`**: 개발 및 디버깅을 돕는 에이전트 전용 스킬(msw-avatar, behaviourtree 등) 설정 폴더입니다.
+
 
 ---
 
