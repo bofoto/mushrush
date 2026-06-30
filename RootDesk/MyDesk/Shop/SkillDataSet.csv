@@ -1,0 +1,3 @@
+﻿SkillId,SkillName,xDamage,SkillEffect,ProjectileEffect,HitEffect,SkillSound,AvatarAnim,SkillPrice,SkinIconRUID,Cooldown,SkillType
+1,디바인 차지VI,15,cf4d87e532b1480685a7bcb46f668067,,e3aca6d3ff0c488b95ff88f67af1f2db,,swingT1,6000,520927388b084c419d7d81e79c35ff7e,5,MeleeSkill
+2,샤크 웨이브,20,3cce39ee51a44d99abf9157a944e2643,2f0102e2716b4a4fb56f47300df6716a,dee4d3f3c9034d5184d0f71c2a201e9b,4446b4f674c64f9ab02f6bf452e0e412,stabO2,180000,6644be80472d43cf98dce56abc2957c0,7,RangedSkill

@@ -1,0 +1,23 @@
+{
+  "Id": "",
+  "GameId": "",
+  "EntryKey": "userdataset://89f4f251-c2f8-44ea-ae2d-c630c2055b73",
+  "ContentType": "x-mod/userdataset",
+  "Content": "",
+  "Usage": 0,
+  "UsePublish": 1,
+  "UseService": 0,
+  "CoreVersion": "26.3.0.0",
+  "StudioVersion": "0.1.0.0",
+  "DynamicLoading": 0,
+  "ContentProto": {
+    "Use": "Json",
+    "Json": {
+      "name": "BossMonsterDataSet",
+      "id": "89f4f251-c2f8-44ea-ae2d-c630c2055b73",
+      "serveronly": false,
+      "syncDataSetWebUrl": "",
+      "dynamicloading": 0
+    }
+  }
+}

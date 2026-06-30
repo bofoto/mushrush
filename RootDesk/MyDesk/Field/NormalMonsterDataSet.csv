@@ -1,0 +1,3 @@
+﻿MonsterId,Name,SpriteRUID,ScaleX,ScaleY,TriggerWidth,TriggerHeight,MaxHp,RewardGold
+101,달팽이,35843142042440f3a014c241507479d2,1,1,1,1,2,5000000000
+102,주황버섯,896b0bf145994832b3cde21feda8947d,1,1,1,1,3,7

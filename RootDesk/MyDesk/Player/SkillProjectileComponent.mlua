@@ -1,0 +1,78 @@
+@Component
+script SkillProjectileComponent extends Component
+
+	property number MoveSpeed = 2
+
+	property boolean HasHit = false
+
+	property number Damage = 0
+
+	property string HitEffectRUID = ""
+
+	property string SkillSoundRUID = ""
+
+	property Entity OwnerEntity = nil
+
+	@ExecSpace("ClientOnly")
+	method void OnBeginPlay()
+		if self.Entity ~= nil and self.Entity.SpriteRendererComponent ~= nil then
+			self.Entity.SpriteRendererComponent.FlipX = true
+		end
+	end
+
+	method void OnUpdate(number delta)
+		if self:IsClient() then 
+			return 
+		end
+		
+		if self.HasHit then 
+			return
+		end
+		if not isvalid(self.Entity) then 
+			return 
+		end
+		
+		local pos = self.Entity.TransformComponent.Position
+		local newPos = Vector3(pos.x + self.MoveSpeed * delta, pos.y, pos.z)
+		self.Entity.TransformComponent.Position = newPos
+	end
+
+	@EventSender("Self")
+	handler HandleTriggerEnterEvent(TriggerEnterEvent event)
+		--------------- Native Event Sender Info ----------------
+		-- Sender: TriggerComponent
+		-- Space: Server, Client
+		---------------------------------------------------------
+		
+		if self.HasHit then return end
+		
+		local hitEntity = event.TriggerBodyEntity
+		if hitEntity == nil or not isvalid(hitEntity) then return end
+		
+		local isTarget = false
+		if hitEntity.HitComponent ~= nil then
+			local cg = hitEntity.HitComponent.CollisionGroup
+			if cg == CollisionGroups.Monster or cg == CollisionGroups.Boss then
+				isTarget = true
+			end
+		end
+		if not isTarget then return end
+		
+		self.HasHit = true
+		
+		local hitPos = self.Entity.TransformComponent.Position
+		
+		if self.OwnerEntity ~= nil and self.OwnerEntity.PlayerAttackComponent ~= nil then
+			self.OwnerEntity.PlayerAttackComponent:OnProjectileHit(
+			hitEntity, hitPos, self.Damage, self.HitEffectRUID, self.SkillSoundRUID
+			)
+		end
+		
+		_TimerService:SetTimerOnce(function()
+			if self.Entity ~= nil and isvalid(self.Entity) then
+				_EntityService:Destroy(self.Entity)
+			end
+		end, 0.2)
+	end
+
+end

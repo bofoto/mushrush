@@ -1,0 +1,154 @@
+@Logic
+script SkillShop extends Logic
+
+	method void Setup()
+		--버튼 연결
+		if self:IsClient() then
+			local skillShopBtn = _EntityService:GetEntityByPath("/ui/DefaultGroup/SkillShopBtn")
+			if skillShopBtn ~= nil then
+				skillShopBtn:ConnectEvent(ButtonClickEvent, function()
+					local skillShopUI = _EntityService:GetEntityByPath("/ui/SkillShop")
+					if skillShopUI ~= nil then
+						skillShopUI.Enable = true
+					end
+					self:RefreshSkillButtonStates()
+				end)
+			end
+		
+			local skillCloseBtn = _EntityService:GetEntityByPath("/ui/SkillShop/UISprite/SkillCloseBtn")
+			if skillCloseBtn ~= nil then
+				skillCloseBtn:ConnectEvent(ButtonClickEvent, function()
+					local skillShopUI = _EntityService:GetEntityByPath("/ui/SkillShop")
+					if skillShopUI ~= nil then
+						skillShopUI.Enable = false
+					end
+				end)
+			end
+			self:LoadSkillItems()
+		end
+	end
+
+	@ExecSpace("ClientOnly")
+	method void LoadSkillItems()
+		--처음 스킬 정보를 불러옴
+		if self._T.skillShopLoaded == true then return end
+		self._T.skillShopLoaded = true
+		
+		local shopWindow = _EntityService:GetEntityByPath("/ui/SkillShop/UISprite/ShopWindow")
+		if shopWindow == nil then return end
+		
+		local templateSlot = shopWindow:GetChildByName("SkillSlot")
+		if templateSlot == nil then return end
+		templateSlot.Enable = false  
+		
+		local skillCache = _SkillDataSet.skillData
+		if skillCache == nil or not next(skillCache) then return end
+		
+		for _, sd in pairs(skillCache) do
+			local skillId    = tostring(sd.SkillId)
+			local skillName  = sd.SkillName
+			local skillPrice = sd.SkillPrice
+			local skillIconRUID = sd.SkinIconRUID
+		
+			local slot = templateSlot:Clone("SkillSlot_" .. skillId)
+			slot.Enable = true
+		
+			local nameEntity = slot:GetChildByName("SkillName")
+			if nameEntity ~= nil and nameEntity.TextGUIRendererComponent ~= nil then
+				nameEntity.TextGUIRendererComponent.Text = skillName
+			end
+			
+			local priceEntity = slot:GetChildByName("SkillPrice")
+			if priceEntity ~= nil and priceEntity.TextGUIRendererComponent ~= nil then
+				priceEntity.TextGUIRendererComponent.Text = tostring(skillPrice)
+			end
+		
+			local iconEntity = slot:GetChildByName("SkillIcon")
+			if iconEntity ~= nil and iconEntity.SpriteGUIRendererComponent ~= nil and skillIconRUID ~= nil and skillIconRUID ~= "" then
+				iconEntity.SpriteGUIRendererComponent.ImageRUID.DataId = "thumbnail://" .. skillIconRUID
+			end
+		
+			local buyBtnEntity = slot:GetChildByName("SkillBuyBtn")
+			if buyBtnEntity ~= nil then
+				local capturedId = skillId  
+				buyBtnEntity:ConnectEvent(ButtonClickEvent, function()
+					self:BuySkill(capturedId)
+				end)
+			end
+		end
+		self:RefreshSkillButtonStates()
+	end
+
+	@ExecSpace("ClientOnly")
+	method void RefreshSkillButtonStates()
+		--스킬 정보 갱신
+		local shopWindow = _EntityService:GetEntityByPath("/ui/SkillShop/UISprite/ShopWindow")
+		if shopWindow == nil then return end
+		
+		local playerInfo = _UserService.LocalPlayer.PlayerInfo
+		if playerInfo == nil then return end
+		
+		local ownedSkillIds = playerInfo.OwnedSkillIds or ""
+		
+		local skillCache = _SkillDataSet.skillData
+		if skillCache == nil or not next(skillCache) then return end
+		for skillId, _ in pairs(skillCache) do
+			local slot = shopWindow:GetChildByName("SkillSlot_" .. skillId)
+			if slot ~= nil then
+				local isOwned = ("," .. ownedSkillIds .. ","):find("," .. skillId .. ",", 1, true) ~= nil
+		
+				local buyBtn = slot:GetChildByName("SkillBuyBtn")
+				if buyBtn ~= nil then
+					if isOwned then
+						buyBtn.Enable = false
+		            end
+				end
+			end
+		end
+	end
+
+	@ExecSpace("Server")
+	method void BuySkill(string skillId)
+		local sd = _SkillDataSet:GetSkillDataBySkillId(tonumber(skillId))
+		if sd == nil then return end
+		local skillPrice = sd.SkillPrice
+		
+		if skillPrice == nil then return end
+		
+		local playerEntity = _UserService:GetUserEntityByUserId(senderUserId)
+		if playerEntity == nil or playerEntity.PlayerInfo == nil then
+			return
+		end
+		
+		local playerInfo = playerEntity.PlayerInfo
+		
+		if playerInfo:IsOwnedSkill(skillId) then
+			return
+		end
+		
+		if playerInfo.GoldWalet < skillPrice then
+			return
+		end
+		
+		playerInfo.GoldWalet = playerInfo.GoldWalet - skillPrice
+		
+		playerInfo:AddOwnedSkill(skillId)
+		
+		self:ResponseBuySkill(skillId, senderUserId)
+	end
+
+	@ExecSpace("Client")
+	method void ResponseBuySkill(string skillId, string userId)
+		local shopWindow = _EntityService:GetEntityByPath("/ui/SkillShop/UISprite/ShopWindow")
+		if shopWindow == nil then return end
+		
+		local slot = shopWindow:GetChildByName("SkillSlot_" .. skillId)
+		if slot == nil then return end
+		
+		local buyBtn = slot:GetChildByName("SkillBuyBtn")
+		if buyBtn ~= nil then
+			buyBtn.Enable = false
+		end
+	end
+
+end

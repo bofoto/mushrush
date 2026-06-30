@@ -1,0 +1,30 @@
+@Struct
+script SkillData
+
+	property integer Index = 0
+
+	property integer SkillId = 0
+
+	property string SkillName = ""
+
+	property number xDamage = 0
+
+	property string SkillEffect = ""
+
+	property string ProjectileEffect = ""
+
+	property string HitEffect = ""
+
+	property string SkillSound = ""
+
+	property string AvatarAnim = ""
+
+	property number SkillPrice = 0
+
+	property string SkinIconRUID = ""
+
+	property number Cooldown = 0
+
+	property string SkillType = ""
+
+end

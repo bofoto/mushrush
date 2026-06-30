@@ -1,0 +1,205 @@
+@Logic
+script BeautyShop extends Logic
+
+	method void OnBeginPlay()
+		if self:IsClient() then
+			local beautyBtn = _EntityService:GetEntityByPath("/ui/DefaultGroup/BeautyShopBtn")
+			if beautyBtn ~= nil then
+				beautyBtn:ConnectEvent(ButtonClickEvent, function()
+					local beautyUI = _EntityService:GetEntityByPath("/ui/BeautyUI")
+					if beautyUI ~= nil then beautyUI.Enable = true end
+					self:RefreshBeautyButtonStates()
+				end)
+			end
+		
+			local beautyCloseBtn = _EntityService:GetEntityByPath("/ui/BeautyUI/UISprite_1/BeautyShopCloseBtn")
+			if beautyCloseBtn ~= nil then
+				beautyCloseBtn:ConnectEvent(ButtonClickEvent, function()
+					local beautyUI = _EntityService:GetEntityByPath("/ui/BeautyUI")
+					if beautyUI ~= nil then beautyUI.Enable = false end
+				end)
+			end
+			self:LoadBeautyItems()
+		end
+	end
+
+	@ExecSpace("ClientOnly")
+	method void LoadBeautyItems()
+		if self._T.beautyShopLoaded == true then return end
+		self._T.beautyShopLoaded = true
+		
+		local beautyWindow = _EntityService:GetEntityByPath("/ui/BeautyUI/UISprite_1/ShopWindow")
+		if beautyWindow == nil then
+			return 
+		end
+		
+		local templateItem = beautyWindow:GetChildByName("ItemSlot")
+		
+		if templateItem == nil then
+			return 
+		end
+		
+		templateItem.Enable = false
+		
+		local beautyDataSet = _DataService:GetTable("BeautyShopDataSet")
+		
+		local playerInfo = _UserService.LocalPlayer.PlayerInfo
+		local ownedIds = playerInfo ~= nil and playerInfo.OwnedBeautyIds or ""
+		local function isOwned(id)
+			return ("," .. ownedIds .. ","):find("," .. id .. ",", 1, true) ~= nil
+		end
+		
+		local beautyWeaponRUID = playerInfo ~= nil and playerInfo.BeautyWeaponRUID or ""
+		local beautyHelmetRUID = playerInfo ~= nil and playerInfo.BeautyHelmetRUID or ""
+		local beautySuitRUID   = playerInfo ~= nil and playerInfo.BeautySuitRUID   or ""
+		local beautyCapeRUID   = playerInfo ~= nil and playerInfo.BeautyCapeRUID   or ""
+		local beautyShoesRUID  = playerInfo ~= nil and playerInfo.BeautyShoesRUID  or ""
+		
+		for i = 1, beautyDataSet:GetRowCount() do
+			local shopId    = beautyDataSet:GetCell(i, "ShopId")
+			local name      = beautyDataSet:GetCell(i, "Name")
+			local price     = beautyDataSet:GetCell(i, "Price")
+			local itemImage = beautyDataSet:GetCell(i, "ItemRUID")
+			local itemType  = beautyDataSet:GetCell(i, "Type")
+		
+			local item = templateItem:Clone("BeautyItem_" .. shopId)
+			item.Enable = true
+		
+			local itemNameEntity = item:GetChildByName("ItemName")
+			if itemNameEntity ~= nil then
+				itemNameEntity.TextGUIRendererComponent.Text = name
+			end
+		
+			local itemPriceEntity = item:GetChildByName("ItemPrice")
+			if itemPriceEntity ~= nil then
+				itemPriceEntity.TextGUIRendererComponent.Text = tostring(price)
+			end
+		
+			local itemImageEntity = item:GetChildByName("ItemImage")
+			if itemImageEntity ~= nil then
+				itemImageEntity.SpriteGUIRendererComponent.ImageRUID.DataId = "thumbnail://" .. itemImage
+			end
+		
+			local isEquipped = false
+			if itemType == "Weapon" and beautyWeaponRUID == itemImage then isEquipped = true
+			elseif itemType == "Helmet" and beautyHelmetRUID == itemImage then isEquipped = true
+			elseif itemType == "Suit"   and beautySuitRUID   == itemImage then isEquipped = true
+			elseif itemType == "Cape"   and beautyCapeRUID   == itemImage then isEquipped = true
+			elseif itemType == "Shoes"  and beautyShoesRUID  == itemImage then isEquipped = true
+			end
+		
+			local buyBtnEntity = item:GetChildByName("ItemBuyBtn")
+			if buyBtnEntity ~= nil then
+				if isOwned(shopId) then
+					buyBtnEntity.Enable = false
+				else
+					buyBtnEntity.Enable = true
+					if buyBtnEntity.TextGUIRendererComponent ~= nil then
+						buyBtnEntity.TextGUIRendererComponent.Text = "구매"
+					end
+					if buyBtnEntity.SpriteGUIRendererComponent ~= nil then
+						buyBtnEntity.SpriteGUIRendererComponent.Color = Color(1, 1, 1)
+					end
+				end
+				local capturedId = shopId
+				buyBtnEntity:ConnectEvent(ButtonClickEvent, function()
+					self:BuyBeauty(capturedId)
+				end)
+			end
+		end
+		
+		self:RefreshBeautyButtonStates()
+	end
+
+	@ExecSpace("ClientOnly")
+	method void RefreshBeautyButtonStates()
+		local beautyWindow = _EntityService:GetEntityByPath("/ui/BeautyUI/UISprite_1/ShopWindow")
+		if beautyWindow == nil then return end
+		
+		local pi = _UserService.LocalPlayer.PlayerInfo
+		if pi == nil then return end
+		
+		local ownedIds = pi.OwnedBeautyIds or ""
+		local beautyDataSet = _DataService:GetTable("BeautyShopDataSet")
+		
+		for i = 1, beautyDataSet:GetRowCount() do
+			local shopId = beautyDataSet:GetCell(i, "ShopId")
+			local item = beautyWindow:GetChildByName("BeautyItem_" .. shopId)
+			if item ~= nil then
+				local isOwned = ("," .. ownedIds .. ","):find("," .. shopId .. ",", 1, true) ~= nil
+				local buyBtn = item:GetChildByName("ItemBuyBtn")
+				if buyBtn ~= nil then
+					if isOwned then
+						buyBtn.Enable = false
+					else
+						buyBtn.Enable = true
+						if buyBtn.TextGUIRendererComponent ~= nil then
+							buyBtn.TextGUIRendererComponent.Text = "구매"
+						end
+						if buyBtn.SpriteGUIRendererComponent ~= nil then
+							buyBtn.SpriteGUIRendererComponent.Color = Color(1, 1, 1)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	@ExecSpace("Server")
+	method void BuyBeauty(string itemId)
+		local beautyDataSet = _DataService:GetTable("BeautyShopDataSet")
+		
+		local row = beautyDataSet:FindRow("ShopId", itemId)
+		if row == nil then
+			return
+		end
+		
+		local price    = tonumber(row:GetItem("Price"))
+		local itemRUID = row:GetItem("ItemRUID")
+		local itemType = row:GetItem("Type")
+		
+		local playerEntity = _UserService:GetUserEntityByUserId(senderUserId)
+		if playerEntity == nil or playerEntity.PlayerInfo == nil then
+			return
+		end
+		
+		local playerInfo = playerEntity.PlayerInfo
+		
+		if playerInfo.BeautyWalet < price then
+			return
+		end
+		
+		playerInfo.BeautyWalet = playerInfo.BeautyWalet - price
+		
+		if itemType == "Weapon" then
+			playerInfo.BeautyWeaponRUID = itemRUID
+		elseif itemType == "Helmet" then
+			playerInfo.BeautyHelmetRUID = itemRUID
+		elseif itemType == "Suit" then
+			playerInfo.BeautySuitRUID = itemRUID
+		elseif itemType == "Cape" then
+			playerInfo.BeautyCapeRUID = itemRUID
+		elseif itemType == "Shoes" then
+			playerInfo.BeautyShoesRUID = itemRUID
+		end
+		
+		playerInfo:AddOwnedBeauty(itemId)
+		playerInfo:ApplyCostume()
+		self:ResponseBuyBeauty(itemId, senderUserId)
+	end
+
+	@ExecSpace("Client")
+	method void ResponseBuyBeauty(string shopId, string userId)
+		local beautyWindow = _EntityService:GetEntityByPath("/ui/BeautyUI/UISprite_1/ShopWindow")
+		if beautyWindow == nil then return end
+		
+		local itemEntity = beautyWindow:GetChildByName("BeautyItem_" .. shopId)
+		if itemEntity ~= nil then
+			local buyBtn = itemEntity:GetChildByName("ItemBuyBtn")
+			if buyBtn ~= nil then
+				buyBtn.Enable = false
+			end
+		end
+	end
+
+end

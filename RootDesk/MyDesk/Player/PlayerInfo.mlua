@@ -1,0 +1,388 @@
+@Component
+script PlayerInfo extends Component
+
+	@TargetUserSync
+	property integer AtkLv = 0
+
+	@TargetUserSync
+	property integer CritRateLv = 0
+
+	@TargetUserSync
+	property integer CritDmgLv = 0
+
+	@TargetUserSync
+	property number GoldWalet = 0
+
+	@TargetUserSync
+	property number BeautyWalet = 0
+
+	@TargetUserSync
+	property integer IdleGoldLv = 1
+
+	@TargetUserSync
+	property integer OfflineGoldLv = 1
+
+	@TargetUserSync
+	property integer EquippedWeaponId = 0
+
+	@TargetUserSync
+	property integer EquippedHelmetId = 0
+
+	@TargetUserSync
+	property integer EquippedSuitId = 0
+
+	@TargetUserSync
+	property integer EquippedCapeId = 0
+
+	@TargetUserSync
+	property integer EquippedShoesId = 0
+
+	@TargetUserSync
+	property integer LastStageId = 1
+
+	@TargetUserSync
+	property integer FinalAtk = 0
+
+	@TargetUserSync
+	property number FinalCritRate = 0.0
+
+	@TargetUserSync
+	property number FinalCritDmg = 1.5
+
+	property number EquipAtk = 0
+
+	property number EquipCritRate = 0
+
+	property number EquipCritDmg = 0
+
+	property number EquipAttackIntervalReduction = 0
+
+	property number CurrentClearRewardGold = 0
+
+	property integer NextStageId = 1
+
+	property string CurrentStageMapName = ""
+
+	@TargetUserSync
+	property string OwnedEquipIds = ""
+
+	@TargetUserSync
+	property string OwnedBeautyIds = ""
+
+	@TargetUserSync
+	property string OwnedSkillIds = ""
+
+	property string BeautyWeaponRUID = ""
+
+	property string BeautyHelmetRUID = ""
+
+	property string BeautySuitRUID = ""
+
+	property string BeautyCapeRUID = ""
+
+	property string BeautyShoesRUID = ""
+
+	property number LastLoginTime = 0
+
+	property number IdleGoldAccumTime = 0
+
+	@ExecSpace("ServerOnly")
+	method void DataSave()
+		if self.Entity == nil or self.Entity.PlayerComponent == nil then
+		return
+		end
+		
+		local userStorage = _DataStorageService:GetUserDataStorage(self.Entity.PlayerComponent.UserId)
+		if userStorage == nil then
+		return
+		end
+		
+		if self.Entity.PlayerInfo == nil then
+		return
+		end
+		
+		local savePlayerInfoTable = {}
+		self:Save(savePlayerInfoTable)
+		
+		local savePlayerInfoJson = _HttpService:JSONEncode(savePlayerInfoTable)
+		userStorage:SetAndWait("PlayerInfo", savePlayerInfoJson)
+	end
+
+	@ExecSpace("ServerOnly")
+	method void Save(table Storage)
+		local t = {}
+		t["AtkLv"]             = tostring(self.AtkLv)
+		t["CritRateLv"]        = tostring(self.CritRateLv)
+		t["CritDmgLv"]         = tostring(self.CritDmgLv)
+		t["GoldWalet"]         = tostring(self.GoldWalet)
+		t["BeautyWalet"]       = tostring(self.BeautyWalet)
+		t["IdleGoldLv"]        = tostring(self.IdleGoldLv)
+		t["OfflineGoldLv"]     = tostring(self.OfflineGoldLv)
+		t["EquippedWeaponId"]  = tostring(self.EquippedWeaponId)
+		t["EquippedHelmetId"]  = tostring(self.EquippedHelmetId)
+		t["EquippedSuitId"]    = tostring(self.EquippedSuitId)
+		t["EquippedCapeId"]    = tostring(self.EquippedCapeId)
+		t["EquippedShoesId"]               = tostring(self.EquippedShoesId)
+		t["EquipAtk"]                      = tostring(self.EquipAtk)
+		t["EquipCritRate"]                 = tostring(self.EquipCritRate)
+		t["EquipCritDmg"]                  = tostring(self.EquipCritDmg)
+		t["EquipAttackIntervalReduction"]  = tostring(self.EquipAttackIntervalReduction)
+		t["BeautyWeaponRUID"] = tostring(self.BeautyWeaponRUID)
+		t["BeautyHelmetRUID"] = tostring(self.BeautyHelmetRUID)
+		t["BeautySuitRUID"]   = tostring(self.BeautySuitRUID)
+		t["BeautyCapeRUID"]   = tostring(self.BeautyCapeRUID)
+		t["BeautyShoesRUID"]  = tostring(self.BeautyShoesRUID)
+		t["OwnedEquipIds"]   = tostring(self.OwnedEquipIds)
+		t["OwnedBeautyIds"]  = tostring(self.OwnedBeautyIds)
+		t["OwnedSkillIds"]   = tostring(self.OwnedSkillIds)
+		t["LastStageId"]       = tostring(self.LastStageId)
+		t["CurrentStageMapName"] = tostring(self.CurrentStageMapName)
+		t["LastLoginTime"] = tostring(os.time())
+		Storage["PlayerInfo"] = t
+	end
+
+	@ExecSpace("ServerOnly")
+	method void Load(table Storage)
+		if Storage == nil then
+			return
+		end
+		local t = Storage["PlayerInfo"]
+		if t == nil then
+			self:RecalculateDerivedStats()
+			return
+		end
+		self.AtkLv             = tonumber(t["AtkLv"])            or 0
+		self.CritRateLv        = tonumber(t["CritRateLv"])       or 0
+		self.CritDmgLv         = tonumber(t["CritDmgLv"])        or 0
+		self.GoldWalet         = --[[tonumber(t["GoldWalet"])        or 0 --]]999999999
+		self.BeautyWalet       = --[[tonumber(t["BeautyWalet"])      or 0 --]]999999999
+		self.IdleGoldLv        = tonumber(t["IdleGoldLv"])       or 1
+		self.OfflineGoldLv     = tonumber(t["OfflineGoldLv"])    or 1
+		self.EquippedWeaponId  = tonumber(t["EquippedWeaponId"]) or 0
+		self.EquippedHelmetId  = tonumber(t["EquippedHelmetId"]) or 0
+		self.EquippedSuitId    = tonumber(t["EquippedSuitId"])   or 0
+		self.EquippedCapeId    = tonumber(t["EquippedCapeId"])   or 0
+		self.EquippedShoesId   = tonumber(t["EquippedShoesId"])  or 0
+		self.EquipAtk          = tonumber(t["EquipAtk"])         or 0
+		self.EquipCritRate     = tonumber(t["EquipCritRate"])    or 0.0
+		self.EquipCritDmg      = tonumber(t["EquipCritDmg"])     or 0.0
+		self.EquipAttackIntervalReduction  = tonumber(t["EquipAttackIntervalReduction"]) or 0.0
+		self.BeautyWeaponRUID = tostring(t["BeautyWeaponRUID"] or "")
+		self.BeautyHelmetRUID = tostring(t["BeautyHelmetRUID"] or "")
+		self.BeautySuitRUID   = tostring(t["BeautySuitRUID"]   or "")
+		self.BeautyCapeRUID   = tostring(t["BeautyCapeRUID"]   or "")
+		self.BeautyShoesRUID  = tostring(t["BeautyShoesRUID"]  or "")
+		self.OwnedEquipIds   = tostring(t["OwnedEquipIds"]   or "")
+		self.OwnedBeautyIds  = tostring(t["OwnedBeautyIds"]  or "")
+		self.OwnedSkillIds   = tostring(t["OwnedSkillIds"]   or "")
+		self.LastStageId       = tonumber(t["LastStageId"])      or 1
+		self.NextStageId       = self.LastStageId + 1
+		self.CurrentStageMapName = tostring(t["CurrentStageMapName"] or "")
+		self.LastLoginTime = tonumber(t["LastLoginTime"]) or 0
+		
+		self:CalculateOfflineReward()
+		self:RecalculateDerivedStats()
+		self:ApplyCostume()
+		self:InitialPlayerInfo()
+	end
+
+	@ExecSpace("ServerOnly")
+	method void RecalculateDerivedStats()
+		local baseAtk       = 10
+		local atkPerLv      = 5
+		local baseCritRate  = 0.05
+		local critRatePerLv = 0.01
+		local critRateCap   = 0.80
+		local baseCritDmg   = 1.5
+		local critDmgPerLv  = 0.10
+		
+		self.FinalAtk      = math.max(1, baseAtk + (self.AtkLv * atkPerLv) + self.EquipAtk)
+		self.FinalCritRate = math.min(baseCritRate + (self.CritRateLv * critRatePerLv) + self.EquipCritRate, critRateCap)
+		self.FinalCritDmg  = baseCritDmg + (self.CritDmgLv * critDmgPerLv) + self.EquipCritDmg
+		
+		if self.Entity ~= nil and self.Entity.PlayerAttackComponent ~= nil then
+			self.Entity.PlayerAttackComponent.AttackInterval = math.max(0.1, 0.5 - self.EquipAttackIntervalReduction)
+		end
+	end
+
+	@ExecSpace("Client")
+	method void InitialPlayerInfo()
+		self:UpdateGoldUI()
+		self:UpdateBeautyUI()
+	end
+
+	@ExecSpace("ServerOnly")
+	method void ApplyCostume()
+		if self.Entity == nil or self.Entity.CostumeManagerComponent == nil then
+			return
+		end
+		local cos = self.Entity.CostumeManagerComponent
+		local equipDataset = _DataService:GetTable("ShopDataSet")
+		
+		local function getEquipRUID(equippedId)
+			if equippedId == nil or equippedId <= 0 then return "" end
+			local row = equipDataset:FindRow("ShopId", tostring(equippedId))
+			if row == nil then return "" end
+			return row:GetItem("ItemRUID")
+		end
+		
+		local weaponRUID = self.BeautyWeaponRUID ~= "" and self.BeautyWeaponRUID or getEquipRUID(self.EquippedWeaponId)
+		cos:SetEquip(MapleAvatarItemCategory.OneHandedWeapon, weaponRUID)
+		
+		local helmetRUID = self.BeautyHelmetRUID ~= "" and self.BeautyHelmetRUID or getEquipRUID(self.EquippedHelmetId)
+		cos:SetEquip(MapleAvatarItemCategory.Cap, helmetRUID)
+		
+		local suitRUID = self.BeautySuitRUID ~= "" and self.BeautySuitRUID or getEquipRUID(self.EquippedSuitId)
+		cos:SetEquip(MapleAvatarItemCategory.Longcoat, suitRUID)
+		
+		local capeRUID = self.BeautyCapeRUID ~= "" and self.BeautyCapeRUID or getEquipRUID(self.EquippedCapeId)
+		cos:SetEquip(MapleAvatarItemCategory.Cape, capeRUID)
+		
+		local shoesRUID = self.BeautyShoesRUID ~= "" and self.BeautyShoesRUID or getEquipRUID(self.EquippedShoesId)
+		cos:SetEquip(MapleAvatarItemCategory.Shoes, shoesRUID)
+	end
+
+	@ExecSpace("ServerOnly")
+	method boolean IsOwnedEquip(string id)
+		if self.OwnedEquipIds == "" then return false end
+		return ("," .. self.OwnedEquipIds .. ","):find("," .. id .. ",", 1, true) ~= nil
+	end
+
+	@ExecSpace("ServerOnly")
+	method void AddOwnedEquip(string id)
+		if self:IsOwnedEquip(id) then return end
+		if self.OwnedEquipIds == "" then
+			self.OwnedEquipIds = id
+		else
+			self.OwnedEquipIds = self.OwnedEquipIds .. "," .. id
+		end
+	end
+
+	@ExecSpace("ServerOnly")
+	method boolean IsOwnedBeauty(string id)
+		if self.OwnedBeautyIds == "" then return false end
+		return ("," .. self.OwnedBeautyIds .. ","):find("," .. id .. ",", 1, true) ~= nil
+	end
+
+	@ExecSpace("ServerOnly")
+	method void AddOwnedBeauty(string id)
+		if self:IsOwnedBeauty(id) then return end
+		if self.OwnedBeautyIds == "" then
+			self.OwnedBeautyIds = id
+		else
+			self.OwnedBeautyIds = self.OwnedBeautyIds .. "," .. id
+		end
+	end
+
+	@ExecSpace("ClientOnly")
+	method void UpdateGoldUI()
+		local goldEntity = _EntityService:GetEntityByPath("/ui/DefaultGroup/GoldWalet")
+		if goldEntity ~= nil then
+			goldEntity.TextGUIRendererComponent.Text = tostring(math.floor(self.GoldWalet))
+		end
+	end
+
+	@ExecSpace("ClientOnly")
+	method void UpdateBeautyUI()
+		local beautyEntity = _EntityService:GetEntityByPath("/ui/DefaultGroup/BeautyWalet")
+		if beautyEntity ~= nil then
+			beautyEntity.TextGUIRendererComponent.Text = tostring(math.floor(self.BeautyWalet))
+		end
+	end
+
+	@ExecSpace("ClientOnly")
+	method void OnSyncProperty(string name, any value)
+		if name == "GoldWalet" then
+			self:UpdateGoldUI()
+		elseif name == "BeautyWalet" then
+			self:UpdateBeautyUI()
+		end
+	end
+
+	@ExecSpace("ServerOnly")
+	method void CalculateOfflineReward()
+		if self.LastLoginTime == 0 then
+			return
+		end
+		
+		local currentTime = os.time()
+		local offlineSeconds = currentTime - self.LastLoginTime
+		
+		if offlineSeconds <= 0 then
+			return
+		end
+		
+		local maxOfflineMinutes = 30 + self.OfflineGoldLv
+		local maxOfflineSeconds = maxOfflineMinutes * 60
+		
+		local actualOfflineSeconds = math.min(offlineSeconds, maxOfflineSeconds)
+		
+		local idleGold = self:CalculateIdleGold()
+		local reward = math.floor((actualOfflineSeconds / 10) * idleGold)
+		
+		if reward > 0 then
+			self.GoldWalet = self.GoldWalet + reward
+			local offlineMinutes = math.floor(actualOfflineSeconds / 60)
+			local offlineHours = math.floor(offlineMinutes / 60)
+			local remainMinutes = offlineMinutes % 60
+			log("[OfflineReward] 오프라인 시간: " .. offlineHours .. "시간 " .. remainMinutes .. "분, 보상: +" .. reward .. "G")
+		end
+	end
+
+	@ExecSpace("ServerOnly")
+	method number CalculateIdleGold()
+		return math.max(1, math.floor(1 * (2 * self.IdleGoldLv)))
+	end
+
+	method void OnUpdate(number delta)
+		if self.Entity == nil then return end
+		
+		if self.Entity.PlayerComponent ~= nil then
+			self.IdleGoldAccumTime = self.IdleGoldAccumTime + delta
+			if self.IdleGoldAccumTime >= 10 then
+				local idleGold = self:CalculateIdleGold()
+				self.GoldWalet = self.GoldWalet + idleGold
+				self.IdleGoldAccumTime = self.IdleGoldAccumTime - 10
+			end
+		end
+	end
+
+	@ExecSpace("ServerOnly")
+	method boolean IsOwnedSkill(string id)
+		if self.OwnedSkillIds == "" then return false end
+		return ("," .. self.OwnedSkillIds .. ","):find("," .. id .. ",", 1, true) ~= nil
+	end
+
+	@ExecSpace("ServerOnly")
+	method void AddOwnedSkill(string id)
+		if self:IsOwnedSkill(id) then return end
+		if self.OwnedSkillIds == "" then
+			self.OwnedSkillIds = id
+		else
+			self.OwnedSkillIds = self.OwnedSkillIds .. "," .. id
+		end
+	end
+
+	@EventSender("Service", "UserService")
+	handler HandleUserLeaveEvent(UserLeaveEvent event)
+		--------------- Native Event Sender Info ----------------
+		-- Sender: UserService
+		-- Space: Server
+		---------------------------------------------------------
+		
+		-- Parameters
+		-- local ProfileCode = event.ProfileCode
+		local UserId = event.UserId
+		---------------------------------------------------------
+		if self.Entity == nil or self.Entity.PlayerComponent == nil then
+			return
+		end
+		
+		if self.Entity.PlayerComponent.UserId ~= UserId then
+			return
+		end
+		
+		self:DataSave()
+	end
+
+end

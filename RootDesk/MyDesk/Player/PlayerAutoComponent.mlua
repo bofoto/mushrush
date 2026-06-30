@@ -1,0 +1,160 @@
+@Component
+script PlayerAutoComponent extends Component
+
+	@TargetUserSync
+	property boolean IsAutoMoving = true
+
+	property number MoveSpeed = 3
+
+	property Entity TargetMonster = nil
+
+	method void OnBeginPlay()
+		if self:IsClient() then
+			local playerController = self.Entity.PlayerControllerComponent
+			
+			if playerController ~= nil then
+				playerController.AlwaysMovingState = self.IsAutoMoving
+				playerController.LookDirectionX = 1
+			end
+			if self.Entity.MovementComponent ~= nil then
+				self.Entity.MovementComponent.InputSpeed = self.MoveSpeed
+			end
+		
+			if self.Entity.AvatarBodyActionSelectorComponent ~= nil and self.IsAutoMoving then
+				self.Entity.AvatarBodyActionSelectorComponent.ActionState = MapleAvatarBodyActionState.Walk
+			end
+		end
+	end
+
+	method void OnUpdate(number delta)
+		if self:IsClient() then
+			if self.Entity.MovementComponent == nil then
+				return
+			end
+		
+			if self.IsAutoMoving then
+				self.Entity.MovementComponent.InputSpeed = self.MoveSpeed
+				self.Entity.MovementComponent:MoveToDirection(Vector2(1, 0), delta)
+		
+				if self.Entity.AvatarBodyActionSelectorComponent ~= nil then
+					self.Entity.AvatarBodyActionSelectorComponent.ActionState = MapleAvatarBodyActionState.Walk
+				end
+			else
+				self.Entity.MovementComponent:Stop()
+			end
+			return
+		end
+		
+		if self.Entity == nil then
+			return
+		end
+		
+		if self:HasValidTarget() then
+			if self.IsAutoMoving then
+				self.IsAutoMoving = false
+			end
+		
+			if self.Entity.PlayerAttackComponent ~= nil then
+				self.Entity.PlayerAttackComponent:TryAutoAttack(delta)
+			end
+			return
+		end
+		
+		self.TargetMonster = nil
+		if not self.IsAutoMoving then
+			self.IsAutoMoving = true
+		end
+	end
+
+	@ExecSpace("ServerOnly")
+	method boolean IsCombatTarget(Entity entity)
+		if entity == nil or not isvalid(entity) then
+			return false
+		end
+		
+		if entity.TriggerComponent ~= nil then
+			local cg = entity.TriggerComponent.CollisionGroup
+			if cg == CollisionGroups.Monster or cg == CollisionGroups.Boss then
+				return true
+			end
+		end
+		
+		if entity.HitComponent ~= nil then
+			local cg = entity.HitComponent.CollisionGroup
+			if cg == CollisionGroups.Monster or cg == CollisionGroups.Boss then
+			return true
+			end
+		end
+		
+		return false
+	end
+
+	@ExecSpace("ServerOnly")
+	method boolean HasValidTarget()
+		if self.TargetMonster == nil then
+			return false
+		end
+		
+		
+		return true
+	end
+
+	@ExecSpace("ClientOnly")
+	method void OnSyncProperty(string name, any value)
+		if name ~= "IsAutoMoving" then
+			return
+		end
+		
+		local playerController = self.Entity.PlayerControllerComponent
+		if playerController ~= nil then
+			playerController.AlwaysMovingState = value
+		end
+		
+		if self.Entity.AvatarBodyActionSelectorComponent ~= nil then
+			if value then
+				self.Entity.AvatarBodyActionSelectorComponent.ActionState = MapleAvatarBodyActionState.Walk
+			else
+				self.Entity.AvatarBodyActionSelectorComponent.ActionState = MapleAvatarBodyActionState.Stand
+			end
+		end
+		
+		if not value and self.Entity.MovementComponent ~= nil then
+			self.Entity.MovementComponent:Stop()
+		end
+	end
+
+	@EventSender("Self")
+	handler HandleTriggerEnterEvent(TriggerEnterEvent event)
+		--------------- Native Event Sender Info ----------------
+		-- Sender: TriggerComponent
+		-- Space: Server, Client
+		---------------------------------------------------------
+		
+		-- Parameters
+		local triggerBodyEntity = event.TriggerBodyEntity
+		---------------------------------------------------------
+		if not self:IsCombatTarget(triggerBodyEntity) then
+			return
+		end
+		
+		if not self:HasValidTarget() then
+			self.TargetMonster = triggerBodyEntity
+		end
+	end
+
+	@EventSender("Self")
+	handler HandleTriggerLeaveEvent(TriggerLeaveEvent event)
+		--------------- Native Event Sender Info ----------------
+		-- Sender: TriggerComponent
+		-- Space: Server, Client
+		---------------------------------------------------------
+		
+		-- Parameters
+		local TriggerBodyEntity = event.TriggerBodyEntity
+		---------------------------------------------------------
+		if self.TargetMonster ~= nil and TriggerBodyEntity == self.TargetMonster then
+			self.TargetMonster = nil
+		end
+	end
+
+end

@@ -1,0 +1,50 @@
+@Logic
+script SkillDataSet extends Logic
+
+	property table skillData = {}
+
+	method void OnBeginPlay()
+		--Data가 필요할 때 마다 DataService를 사용하는 방법이 아닌, 처음에 한번 불러온 뒤, 
+		--Struck에 담아놓고 필요할 때 마다 Struck에 있는 값을 읽어오는 방법
+		self:InitSkillData()
+	end
+
+	method void InitSkillData()
+		if not isvalid(self.skillData) or not next(self.skillData) then
+			local skillData = _DataService:GetTable("SkillDataSet")
+			if isvalid(skillData) then
+				local skillDataRowCount = skillData:GetRowCount()
+				for i = 1 , skillDataRowCount do
+					local skillDataStruck = SkillData()
+					skillDataStruck.Index = i
+					local skillId = math.tointeger(tonumber(skillData:GetCell(i,"SkillId")))
+					skillDataStruck.SkillId = skillId
+					skillDataStruck.SkillName = skillData:GetCell(i,"SkillName")
+					skillDataStruck.xDamage = tonumber(skillData:GetCell(i, "xDamage"))
+					skillDataStruck.SkillEffect = skillData:GetCell(i,"SkillEffect")
+					skillDataStruck.ProjectileEffect = skillData:GetCell(i, "ProjectileEffect")
+					skillDataStruck.HitEffect = skillData:GetCell(i, "HitEffect")
+					skillDataStruck.SkillSound = skillData:GetCell(i, "SkillSound")
+					skillDataStruck.AvatarAnim = skillData:GetCell(i, "AvatarAnim")
+					skillDataStruck.SkillPrice = tonumber(skillData:GetCell(i, "SkillPrice"))
+					skillDataStruck.SkinIconRUID = skillData:GetCell(i, "SkinIconRUID")
+					skillDataStruck.Cooldown = tonumber(skillData:GetCell(i, "Cooldown"))
+					skillDataStruck.SkillType = skillData:GetCell(i, "SkillType")
+					self.skillData[skillId] = skillDataStruck
+				end
+			else
+				log("SkillDataSet을 찾지 못했음.")
+			end
+		end
+		_SkillShop:Setup()
+	end
+
+	method SkillData GetSkillDataBySkillId(integer skillId)
+		if isvalid(self.skillData[skillId])then
+			return self.skillData[skillId]
+		else
+			return nil
+		end
+	end
+
+end

@@ -1,0 +1,171 @@
+@Logic
+script Gym extends Logic
+
+	method void OnBeginPlay()
+		if self:IsClient() then
+			local gymBtn = _EntityService:GetEntityByPath("/ui/DefaultGroup/StatsShopBtn")
+			local gymBtnFunction = function()
+				local gymUI = _EntityService:GetEntityByPath("/ui/GymUI")
+				gymUI.Enable = true
+				self:RefreshGymStates()
+			end
+			gymBtn:ConnectEvent(ButtonClickEvent, gymBtnFunction)
+		
+			local gymCloseBtn = _EntityService:GetEntityByPath("/ui/GymUI/UISprite_2/GymCloseBtn")
+			local gymCloseBtnFunction = function()
+				local gymUI = _EntityService:GetEntityByPath("/ui/GymUI")
+				gymUI.Enable = false
+			end
+			gymCloseBtn:ConnectEvent(ButtonClickEvent, gymCloseBtnFunction)
+		
+			self:LoadGymItems()
+		end
+	end
+
+	@ExecSpace("ClientOnly")
+	method void LoadGymItems()
+		if self._T.gymLoaded == true then return end
+		self._T.gymLoaded = true
+		
+		local gymWindow = _EntityService:GetEntityByPath("/ui/GymUI/UISprite_2/ShopWindow")
+		local templateItem = gymWindow:GetChildByName("StatSlot")
+		templateItem.Enable = false
+		
+		local statList = {
+			{ key = "AtkLv",         label = "공격력",       baseCost = 10 },
+			{ key = "CritRateLv",    label = "치명타 확률",  baseCost = 15 },
+			{ key = "CritDmgLv",     label = "치명타 피해",  baseCost = 20 },
+			{ key = "IdleGoldLv",    label = "방치 골드",    baseCost = 12 },
+			{ key = "OfflineGoldLv", label = "오프라인 골드", baseCost = 12 },
+		}
+		
+		for _, stat in ipairs(statList) do
+			local item = templateItem:Clone("GymItem_" .. stat.key)
+			item.Enable = true
+		
+			local itemNameEntity = item:GetChildByName("StatName")
+			if itemNameEntity ~= nil then
+				itemNameEntity.TextGUIRendererComponent.Text = stat.label
+			end
+		
+			local buyBtnEntity = item:GetChildByName("ItemBuyBtn")
+			if buyBtnEntity ~= nil then
+				local capturedKey = stat.key
+				local capturedBaseCost = stat.baseCost
+				buyBtnEntity:ConnectEvent(ButtonClickEvent, function()
+					self:UpgradeStat(capturedKey, capturedBaseCost)
+				end)
+			end
+		end
+		
+		self:RefreshGymStates()
+	end
+
+	@ExecSpace("ClientOnly")
+	method void RefreshGymStates()
+		local gymWindow = _EntityService:GetEntityByPath("/ui/GymUI/UISprite_2/ShopWindow")
+		if gymWindow == nil then 
+			log("[Gym] RefreshGymStates: gymWindow is nil")
+			return 
+		end
+		
+		local statList = {
+			{ key = "AtkLv",         baseCost = 10 },
+			{ key = "CritRateLv",    baseCost = 15 },
+			{ key = "CritDmgLv",     baseCost = 20 },
+			{ key = "IdleGoldLv",    baseCost = 12 },
+			{ key = "OfflineGoldLv", baseCost = 12 },
+		}
+		
+		for _, stat in ipairs(statList) do
+			local item = gymWindow:GetChildByName("GymItem_" .. stat.key)
+			if item ~= nil then
+				local currentLv = self:GetStatLevel(stat.key)
+				local cost = math.floor(stat.baseCost * (1.08 ^ currentLv))
+		
+				local statLvEntity = item:GetChildByName("StatLv")
+				if statLvEntity ~= nil then
+					statLvEntity.TextGUIRendererComponent.Text = "Lv." .. tostring(currentLv)
+				end
+		
+				local upgradPriceEntity = item:GetChildByName("UpgradPrice")
+				if upgradPriceEntity ~= nil then
+					upgradPriceEntity.TextGUIRendererComponent.Text = tostring(cost)
+				end
+			end
+		end
+	end
+
+	@ExecSpace("ClientOnly")
+	method integer GetStatLevel(string key)
+		local playerInfo = _UserService.LocalPlayer.PlayerInfo
+		if key == "AtkLv"         then return playerInfo.AtkLv
+		elseif key == "CritRateLv"    then return playerInfo.CritRateLv
+		elseif key == "CritDmgLv"     then return playerInfo.CritDmgLv
+		elseif key == "IdleGoldLv"    then return playerInfo.IdleGoldLv
+		elseif key == "OfflineGoldLv" then return playerInfo.OfflineGoldLv
+		end
+		return 0
+	end
+
+	@ExecSpace("Server")
+	method void UpgradeStat(string statKey, integer baseCost)
+		local playerEntity = _UserService:GetUserEntityByUserId(senderUserId)
+		if playerEntity == nil or playerEntity.PlayerInfo == nil then
+			log("[Gym] UpgradeStat: playerEntity nil, senderUserId="..tostring(senderUserId))
+			return
+		end
+		
+		local playerInfo = playerEntity.PlayerInfo
+		local currentLv = 0
+		
+		if statKey == "AtkLv"             then currentLv = playerInfo.AtkLv
+		elseif statKey == "CritRateLv"    then currentLv = playerInfo.CritRateLv
+		elseif statKey == "CritDmgLv"     then currentLv = playerInfo.CritDmgLv
+		elseif statKey == "IdleGoldLv"    then currentLv = playerInfo.IdleGoldLv
+		elseif statKey == "OfflineGoldLv" then currentLv = playerInfo.OfflineGoldLv
+		end
+		
+		local cost = math.floor(baseCost * (1.08 ^ currentLv))
+		log("[Gym] UpgradeStat key="..tostring(statKey).." currentLv="..tostring(currentLv).." cost="..tostring(cost).." gold="..tostring(playerInfo.GoldWalet))
+		
+		if playerInfo.GoldWalet < cost then
+			log("[Gym] UpgradeStat: 골드 부족")
+			return
+		end
+		
+		playerInfo.GoldWalet = playerInfo.GoldWalet - cost
+		
+		if statKey == "AtkLv"             then playerInfo.AtkLv = playerInfo.AtkLv + 1
+		elseif statKey == "CritRateLv"    then playerInfo.CritRateLv = playerInfo.CritRateLv + 1
+		elseif statKey == "CritDmgLv"     then playerInfo.CritDmgLv = playerInfo.CritDmgLv + 1
+		elseif statKey == "IdleGoldLv"    then playerInfo.IdleGoldLv = playerInfo.IdleGoldLv + 1
+		elseif statKey == "OfflineGoldLv" then playerInfo.OfflineGoldLv = playerInfo.OfflineGoldLv + 1
+		end
+		
+		playerInfo:RecalculateDerivedStats()
+		
+		local newLv = currentLv + 1
+		local newCost = math.floor(baseCost * (1.08 ^ newLv))
+		self:ResponseUpgradeStat(statKey, newLv, newCost, senderUserId)
+	end
+
+	@ExecSpace("Client")
+	method void ResponseUpgradeStat(string statKey, integer newLevel, integer newCost, string UserId)
+		local gymWindow = _EntityService:GetEntityByPath("/ui/GymUI/UISprite_2/ShopWindow")
+		if gymWindow == nil then return end
+		local itemEntity = gymWindow:GetChildByName("GymItem_" .. statKey)
+		if itemEntity == nil then return end
+		
+		local statLvEntity = itemEntity:GetChildByName("StatLv")
+		if statLvEntity ~= nil then
+			statLvEntity.TextGUIRendererComponent.Text = "Lv." .. tostring(newLevel)
+		end
+		
+		local upgradPriceEntity = itemEntity:GetChildByName("UpgradPrice")
+		if upgradPriceEntity ~= nil then
+			upgradPriceEntity.TextGUIRendererComponent.Text = tostring(newCost)
+		end
+	end
+
+end

@@ -1,0 +1,99 @@
+@Logic
+script PlayerInfoUI extends Logic
+
+	@ExecSpace("ClientOnly")
+	method void OnBeginPlay()
+		--버튼 연결
+		local piBtn = _EntityService:GetEntityByPath("/ui/DefaultGroup/PlayerInfoBtn")
+		if piBtn ~= nil then
+			piBtn:ConnectEvent(ButtonClickEvent, function()
+				local playerInfoUI = _EntityService:GetEntityByPath("/ui/PlayerInfo")
+				if playerInfoUI ~= nil then playerInfoUI.Enable = true end
+				self:RefreshPlayerInfo()
+			end)
+		end
+		
+		local playerInfoCloseBtn = _EntityService:GetEntityByPath("/ui/PlayerInfo/UISprite/PlayerInfoCloseBtn")
+		if playerInfoCloseBtn ~= nil then
+			playerInfoCloseBtn:ConnectEvent(ButtonClickEvent, function()
+				local playerInfoUI = _EntityService:GetEntityByPath("/ui/PlayerInfo")
+				if playerInfoUI ~= nil then playerInfoUI.Enable = false end
+			end)
+		end
+		
+		self:LoadPlayerInfo()
+	end
+
+	@ExecSpace("ClientOnly")
+	method void LoadPlayerInfo()
+		if self._T.playerInfoLoaded == true then return end
+		self._T.playerInfoLoaded = true
+		
+		local statsWindow = _EntityService:GetEntityByPath("/ui/PlayerInfo/UISprite/StatsWindow")
+		local templateStats = statsWindow:GetChildByName("StatsSlot")
+		templateStats.Enable = false
+		
+		local statList = {
+			{ key = "Atk",      label = "공격력" },
+			{ key = "CritRate", label = "치명타 확률" },
+			{ key = "CritDmg",  label = "치명타 피해" },
+		}
+		for _, stat in ipairs(statList) do
+			local item = templateStats:Clone("StatsList_" .. stat.key)
+			item.Enable = true
+		end
+		
+		self:RefreshPlayerInfo()
+	end
+
+	@ExecSpace("ClientOnly")
+	method void RefreshPlayerInfo()
+		--정보 다시 불러오기 ( 최신화 )
+		local player = _UserService.LocalPlayer
+		if player == nil or player.PlayerInfo == nil then
+			return
+		end
+		
+		local pi = player.PlayerInfo
+		
+		local playerName = _EntityService:GetEntityByPath("/ui/PlayerInfo/UISprite/PlayerName")
+		if playerName ~= nil and playerName.TextGUIRendererComponent ~= nil then
+			playerName.TextGUIRendererComponent.Text = player.PlayerComponent.Nickname
+		end
+		
+		local idleGold = _EntityService:GetEntityByPath("/ui/PlayerInfo/UISprite/IdleGold")
+		if idleGold ~= nil and idleGold.TextGUIRendererComponent ~= nil then
+			local idleGoldValue = math.max(1, math.floor(2 * pi.IdleGoldLv))
+			idleGold.TextGUIRendererComponent.Text = "10초당 방치 보상: " .. tostring(idleGoldValue) .. "G"
+		end
+		
+		local offlineGold = _EntityService:GetEntityByPath("/ui/PlayerInfo/UISprite/OfflineReward")
+		if offlineGold ~= nil and offlineGold.TextGUIRendererComponent ~= nil then
+			local maxMinutes = 30 + pi.OfflineGoldLv
+			offlineGold.TextGUIRendererComponent.Text = "오프라인 최대: " .. tostring(maxMinutes) .. "분"
+		end
+		
+		self:UpdateSlotStats("Atk", "공격력", tostring(pi.FinalAtk))
+		self:UpdateSlotStats("CritRate", "치명타 확률",string.format("%.1f%%", pi.FinalCritRate * 100) )
+		self:UpdateSlotStats("CritDmg", "치명타 피해량",string.format("%.1fx", pi.FinalCritDmg) )
+	end
+
+	@ExecSpace("ClientOnly")
+	method void UpdateSlotStats(string key, string name, string finalValue)
+		--슬롯에 정보 넣어주기.
+		local statsWindow = _EntityService:GetEntityByPath("/ui/PlayerInfo/UISprite/StatsWindow")
+		if statsWindow == nil then 
+			return 
+		end
+		
+		local item = statsWindow:GetChildByName("StatsList_" .. key)
+		if item ~= nil then
+			-- FinalStats 업데이트
+			local finalStatsEntity = item:GetChildByName("FinalStats")
+			if finalStatsEntity ~= nil and finalStatsEntity.TextGUIRendererComponent ~= nil then
+				finalStatsEntity.TextGUIRendererComponent.Text = name .. ": " .. finalValue
+			end
+		end
+	end
+
+end

@@ -1,0 +1,239 @@
+@Logic
+script StageManager extends Logic
+
+	@Sync
+	property number SPAWN_GAP_X = 7
+
+	@Sync
+	property number SPAWN_INTERVAL = 0
+
+	@Sync
+	property number NORMAL_MONSTER_SPAWN_COUNT = 10
+
+	@Sync
+	property string NORMAL_MONSTER_MODEL_ID = "model://a69148b1-b28e-4ca4-8cd2-e3e2c2e0707d"
+
+	@Sync
+	property string BOSS_MONSTER_MODEL_ID = "model://119467b8-57a1-47d3-91ea-19ee4f43a3d5"
+
+	@Sync
+	property number MONSTER_SPAWN_DELAY_SEC = 0.2
+
+	@ExecSpace("ServerOnly")
+	method void OnPlayerReady(Entity playerEntity)
+		self:MoveToSavedStage(playerEntity)
+	end
+
+	@ExecSpace("ServerOnly")
+	method void MoveToSavedStage(Entity playerEntity)
+		if playerEntity == nil or playerEntity.PlayerComponent == nil or playerEntity.PlayerInfo == nil then
+			return
+		end
+		
+		local stageId = tonumber(playerEntity.PlayerInfo.LastStageId) or 1
+		local dataset = _DataService:GetTable("StageDataSet")
+		if dataset == nil then
+			self:MoveToStageByName(playerEntity, "Stage_01", "", "", 0, 1)
+		end
+		
+		local row = dataset:FindRow("StageId", tostring(stageId))
+		if row == nil then
+			self:MoveToStageByName(playerEntity, "Stage_01", "", "", 0, 1)
+		end
+		
+		local mapName  = row:GetItem("MapName")
+		local normalMonsterId = row:GetItem("NormalMonsterId")
+		local bossMonsterId = row:GetItem("BossMonsterId")
+		local clearRewardGold = tonumber(row:GetItem("ClearRewardGold")) or 0
+		local nextStageId = stageId + 1
+		
+		if mapName == nil or mapName == "" then
+			mapName = "Stage_01"
+		end
+		
+		self:MoveToStageByName(playerEntity, mapName, tostring(normalMonsterId), tostring(bossMonsterId), clearRewardGold, nextStageId)
+	end
+
+	@ExecSpace("ServerOnly")
+	method void MoveToStageByName(Entity playerEntity, string mapName, string normalMonsterId, string bossMonsterId, number clearRewardGold, integer nextStageId)
+		if playerEntity == nil or playerEntity.PlayerComponent == nil then
+			return
+		end
+		
+		if playerEntity.PlayerInfo ~= nil then
+			playerEntity.PlayerInfo.CurrentStageMapName = tostring(mapName)
+			playerEntity.PlayerInfo.CurrentClearRewardGold = clearRewardGold or 0
+			playerEntity.PlayerInfo.NextStageId = nextStageId or 1
+		end
+		
+		playerEntity.PlayerComponent:MoveToMapPosition(mapName, Vector2(0, 0))
+		
+		_TimerService:SetTimerOnce(function()
+			local lastSpawnPosition = self:SpawnNormalMonsterForStage(playerEntity, normalMonsterId)
+			self:SpawnBossMonsterForStage(playerEntity, bossMonsterId, lastSpawnPosition)
+		end, self.MONSTER_SPAWN_DELAY_SEC)
+	end
+
+	@ExecSpace("ServerOnly")
+	method Vector3 SpawnNormalMonsterForStage(Entity playerEntity, string normalMonsterId)
+		if normalMonsterId == nil or normalMonsterId == "" or normalMonsterId == "nil" then
+		return Vector3(0, 0, 0)
+		end
+		
+		if self.NORMAL_MONSTER_MODEL_ID == nil or self.NORMAL_MONSTER_MODEL_ID == "" then
+		return Vector3(0, 0, 0)
+		end
+		
+		local parentEntity = nil
+		if playerEntity ~= nil then
+			parentEntity = playerEntity.Parent
+		end
+		
+		if parentEntity == nil then
+			parentEntity = playerEntity
+		end
+		
+		local baseX = 0
+		local baseY = 0
+		local baseZ = 0
+		
+		if playerEntity ~= nil and playerEntity.TransformComponent ~= nil then
+			local p = playerEntity.TransformComponent.WorldPosition
+			baseX = p.x
+			baseY = p.y
+			baseZ = p.z
+		end
+		
+		local lastSpawnPosition = Vector3(baseX, baseY, baseZ)
+		
+		for i = 1, self.NORMAL_MONSTER_SPAWN_COUNT do
+			local spawnPosition = Vector3(baseX + (self.SPAWN_GAP_X * i), baseY, baseZ)
+			local spawnName = "StageMonster_"..tostring(normalMonsterId).."_"..tostring(i)
+			local spawnedMonster = _SpawnService:SpawnByModelId(self.NORMAL_MONSTER_MODEL_ID, spawnName, spawnPosition, parentEntity)
+			if spawnedMonster ~= nil then
+				if spawnedMonster.HitComponent ~= nil then
+					spawnedMonster.HitComponent.CollisionGroup = CollisionGroups.Monster
+				end
+				if spawnedMonster.TriggerComponent ~= nil then
+				spawnedMonster.TriggerComponent.CollisionGroup = CollisionGroups.Monster
+				end
+				if spawnedMonster.MonsterComponent ~= nil then
+					spawnedMonster.MonsterComponent:SetMonsterIdAndLoad(tostring(normalMonsterId))
+				end
+			end
+			lastSpawnPosition = spawnPosition
+		end
+		
+		return lastSpawnPosition
+	end
+
+	@ExecSpace("ServerOnly")
+	method Vector3 SpawnBossMonsterForStage(Entity playerEntity, string bossMonsterId, Vector3 lastNormalSpawnPosition)
+		if bossMonsterId == nil or bossMonsterId == "" or bossMonsterId == "nil" then
+			return
+		end
+		
+		if self.BOSS_MONSTER_MODEL_ID == nil or self.BOSS_MONSTER_MODEL_ID == "" then
+			return
+		end
+		
+		local parentEntity = nil
+		if playerEntity ~= nil then
+			parentEntity = playerEntity.Parent
+		end
+		
+		if parentEntity == nil then
+			parentEntity = playerEntity
+		end
+		
+		local bossSpawnPosition = Vector3(lastNormalSpawnPosition.x + self.SPAWN_GAP_X, lastNormalSpawnPosition.y, lastNormalSpawnPosition.z)
+		local bossSpawnName = "StageBoss_"..tostring(bossMonsterId)
+		local spawnedBoss = _SpawnService:SpawnByModelId(self.BOSS_MONSTER_MODEL_ID, bossSpawnName, bossSpawnPosition, parentEntity)
+		if spawnedBoss == nil then
+			return
+		end
+		
+		if spawnedBoss.HitComponent ~= nil then
+			spawnedBoss.HitComponent.CollisionGroup = CollisionGroups.Boss
+		end
+		if spawnedBoss.TriggerComponent ~= nil then
+			spawnedBoss.TriggerComponent.CollisionGroup = CollisionGroups.Boss
+		end
+		
+		if spawnedBoss.BossMonsterComponent ~= nil then
+			spawnedBoss.BossMonsterComponent:SetBossMonsterIdAndLoad(tostring(bossMonsterId))
+			return
+		end
+	end
+
+	@ExecSpace("ServerOnly")
+	method void OnStageClear(Entity playerEntity)
+		if playerEntity == nil or playerEntity.PlayerInfo == nil then
+			return
+		end
+		
+		local dataset = _DataService:GetTable("StageDataSet")
+		if dataset == nil then
+			return
+		end
+		
+		local currentMapName = tostring(playerEntity.PlayerInfo.CurrentStageMapName or "")
+		local clearedStageRow = nil
+		if currentMapName ~= "" then
+			clearedStageRow = dataset:FindRow("MapName", currentMapName)
+		end
+		
+		if clearedStageRow == nil then
+			local fallbackStageId = tonumber(playerEntity.PlayerInfo.LastStageId) or 1
+			clearedStageRow = dataset:FindRow("StageId", tostring(fallbackStageId))
+		end
+		
+		if clearedStageRow == nil then
+			local fallbackReward = tonumber(playerEntity.PlayerInfo.CurrentClearRewardGold) or 0
+			local beforeFallbackGold = playerEntity.PlayerInfo.GoldWalet
+			playerEntity.PlayerInfo.GoldWalet = beforeFallbackGold + fallbackReward
+			return
+		end
+		
+		local clearedStageId = tonumber(clearedStageRow:GetItem("StageId")) or (tonumber(playerEntity.PlayerInfo.LastStageId) or 1)
+		
+		local clearRewardGold = tonumber(playerEntity.PlayerInfo.CurrentClearRewardGold) or tonumber(clearedStageRow:GetItem("ClearRewardGold")) or 0
+		
+		local beforeGold = playerEntity.PlayerInfo.GoldWalet
+		playerEntity.PlayerInfo.GoldWalet = beforeGold + clearRewardGold
+		
+		playerEntity.PlayerInfo.BeautyWalet = playerEntity.PlayerInfo.BeautyWalet + 300
+		
+		local nextStageId = clearedStageId + 1
+		local nextStageRow = dataset:FindRow("StageId", tostring(nextStageId))
+		if nextStageRow == nil then
+			nextStageId = clearedStageId
+			nextStageRow = clearedStageRow
+		end
+		
+		playerEntity.PlayerInfo.LastStageId = nextStageId
+		
+		local nextMapName = nextStageRow:GetItem("MapName")
+		local nextNormalMonsterId = nextStageRow:GetItem("NormalMonsterId")
+		local nextBossMonsterId = nextStageRow:GetItem("BossMonsterId")
+		local nextClearRewardGold = tonumber(nextStageRow:GetItem("ClearRewardGold")) or 0
+		local followingStageId = nextStageId + 1
+		if nextMapName == nil or nextMapName == "" then
+			nextMapName = "Stage_01"
+		end
+		playerEntity.PlayerInfo.CurrentStageMapName = tostring(nextMapName)
+		playerEntity.PlayerInfo.NextStageId = followingStageId
+		playerEntity.PlayerInfo.CurrentClearRewardGold = nextClearRewardGold
+		
+		if playerEntity.PlayerInfo ~= nil then
+			_TimerService:SetTimerOnce(function()
+				if playerEntity ~= nil then
+					playerEntity.PlayerInfo:DataSave()
+				end
+			end, 0)
+		end
+		
+		self:MoveToStageByName(playerEntity, nextMapName, tostring(nextNormalMonsterId), tostring(nextBossMonsterId), nextClearRewardGold, followingStageId)
+	end
+
+end

@@ -1,0 +1,321 @@
+@Component
+script PlayerAttackComponent extends AttackComponent
+
+	@Sync
+	property number AttackInterval = 3
+
+	@Sync
+	property Vector2 AttackSize = Vector2(2,1)
+
+	@Sync
+	property number AttackOffsetX = 0.7
+
+	@Sync
+	property number AttackOffsetY = 0.5
+
+	@Sync
+	property number LastAttackTime = 0
+
+	property boolean IsAttacking = false
+
+	property number AttackTimer = 0
+
+	@TargetUserSync
+	property number SkillCooldown1 = 0
+
+	@TargetUserSync
+	property number SkillCooldown2 = 0
+
+	@TargetUserSync
+	property number SkillCooldown3 = 0
+
+	property string ProjectileModelId = "model://e1b24f93-67e0-4301-aee1-9c0bd28e6fe9"
+
+	@ExecSpace("ServerOnly")
+	method void TryAutoAttack(number delta)
+		if self.IsAttacking == true then
+			return
+		end
+		
+		self.AttackTimer = self.AttackTimer + delta
+		if self.AttackTimer < self.AttackInterval then
+			return
+		end
+		self.AttackTimer = 0
+		
+		if self:TryExecuteBestSkill(delta)then
+			return
+		else
+			self.IsAttacking = true
+			
+			if self.Entity ~= nil and self.Entity.PlayerControllerComponent ~= nil then
+				self.Entity.PlayerControllerComponent:ActionAttack()
+			end
+			
+			local attackOffset = Vector2(self.AttackOffsetX, self.AttackOffsetY)
+			self:Attack(self.AttackSize, attackOffset, "", CollisionGroups.Monster)
+			self:Attack(self.AttackSize, attackOffset, "", CollisionGroups.Boss)
+			
+			_TimerService:SetTimerOnce(function()
+				if isvalid(self.Entity) then
+					self:InitialAttackAction()
+				end
+			end, 0.2)
+		end
+	end
+
+	@ExecSpace("ServerOnly")
+	method boolean TryExecuteBestSkill(number delta)
+		if self.Entity == nil or self.Entity.PlayerInfo == nil then return false end
+		
+		local ownedSkillIds = self.Entity.PlayerInfo.OwnedSkillIds or ""
+		if ownedSkillIds == "" then
+			return false 
+		end
+			
+		local currentTime = _UtilLogic.ElapsedSeconds
+		
+		local ownedIds = {}
+		for id in ownedSkillIds:gmatch("[^,]+") do
+			local num = tonumber(id)
+			if num ~= nil then
+				table.insert(ownedIds, num)
+			end
+		end
+		table.sort(ownedIds, function(a, b) return a > b end)
+		
+		
+		
+		
+		for _, skillId in ipairs(ownedIds) do
+			local skillIdStr = tostring(skillId)
+			local skillData = _SkillDataSet:GetSkillDataBySkillId(skillId)
+			if skillData ~= nil then
+				local cooldown = skillData.Cooldown or 10
+				local lastUse  = self:GetSkillCooldown(skillIdStr)
+				if (lastUse + cooldown) - currentTime <= 0 then
+					local xDamage          = skillData.xDamage          or 100
+					local skillEffect      = skillData.SkillEffect      or ""
+					local projectileEffect = skillData.ProjectileEffect or ""
+					local hitEffect        = skillData.HitEffect        or ""
+					local skillSound       = skillData.SkillSound       or ""
+					local skillType        = skillData.SkillType        or "MeleeSkill"
+					local avatarAnim       = skillData.AvatarAnim       or ""
+					
+					self.IsAttacking = true
+					self:SetSkillCooldown(skillIdStr, currentTime)
+					
+					if avatarAnim ~= "" then
+						self:PlaySkillAnimationToClient(avatarAnim)
+					end
+					
+					local baseDmg = 1
+					if self.Entity.PlayerInfo ~= nil then
+						baseDmg = self.Entity.PlayerInfo.FinalAtk
+					end
+					local finalDamage = math.max(1, math.floor(baseDmg * xDamage))
+					
+			        if skillType == "RangedSkill" then
+			            self:ExecuteRangedSkill(skillIdStr, finalDamage, skillEffect, projectileEffect, hitEffect, skillSound)
+			        else
+			            self:ExecuteMeleeSkill(skillIdStr, finalDamage, skillEffect, hitEffect)
+			        end
+				
+				return true
+				end
+			end
+		end
+					
+	end
+
+	@ExecSpace("ServerOnly")
+	method number GetSkillCooldown(string skillId)
+		if skillId == "1" then return self.SkillCooldown1
+			elseif skillId == "2" then return self.SkillCooldown2
+			elseif skillId == "3" then return self.SkillCooldown3
+		end
+		return 0
+	end
+
+	@ExecSpace("ServerOnly")
+	method void SetSkillCooldown(string skillId, number time)
+		if skillId == "1" then self.SkillCooldown1 = time
+			elseif skillId == "2" then self.SkillCooldown2 = time
+			elseif skillId == "3" then self.SkillCooldown3 = time
+		end
+	end
+
+	@ExecSpace("Client")
+	method void PlaySkillAnimationToClient(string avatarAnim)
+		self:PlaySkillAnimation(avatarAnim)
+	end
+
+	@ExecSpace("ClientOnly")
+	method void PlaySkillAnimation(string avatarAnim)
+		if self.Entity == nil or self.Entity.AvatarBodyActionSelectorComponent == nil then return end
+		local myBody = self.Entity.AvatarRendererComponent:GetBodyEntity()
+		local actionEvent = ActionStateChangedEvent(avatarAnim, avatarAnim)
+		myBody:SendEvent(actionEvent)
+	end
+
+	@ExecSpace("ServerOnly")
+	method void ExecuteRangedSkill(string skillId, number damage, string skillEffect, string projectileEffect, string hitEffect, string skillSound)
+		if self.ProjectileModelId == "" or self.Entity == nil then
+			self.IsAttacking = false
+			return
+		end
+		
+		
+		
+		
+		local lookDir = 1
+		if self.Entity.PlayerControllerComponent ~= nil then
+			lookDir = self.Entity.PlayerControllerComponent.LookDirectionX
+		end
+		
+		if skillEffect ~= "" then
+			self:PlaySkillEffectClient(skillEffect, lookDir)
+		end
+		
+		_TimerService:SetTimerOnce(function()
+			if not isvalid(self.Entity) then
+				self.IsAttacking = false
+				return
+			end
+			
+			local spawnPos = self.Entity.TransformComponent.Position
+			spawnPos = Vector3(spawnPos.x + (lookDir * 1.0), spawnPos.y + self.AttackOffsetY, spawnPos.z)
+			
+			local projName = "Proj_" .. skillId .. "_" .. tostring(math.floor(_UtilLogic.ElapsedSeconds * 100))
+			local parentEntity = self.Entity.Parent
+			
+			local projectile = _SpawnService:SpawnByModelId(self.ProjectileModelId, projName, spawnPos, parentEntity)
+			
+			if projectile == nil then
+				self.IsAttacking = false
+				return
+			end
+			
+			local projScale = Vector3.one
+			if lookDir < 0 then
+				projScale = Vector3(-1, 1, 1)
+			end
+			if projectile.TransformComponent ~= nil then
+				projectile.TransformComponent.Scale = projScale
+			end
+			
+		
+			if projectile.SkillProjectileComponent ~= nil then
+				projectile.SkillProjectileComponent.Damage         = damage
+				projectile.SkillProjectileComponent.OwnerEntity    = self.Entity
+				projectile.SkillProjectileComponent.HitEffectRUID  = hitEffect
+				projectile.SkillProjectileComponent.SkillSoundRUID = skillSound
+			end
+		
+			if projectile.SpriteRendererComponent ~= nil and projectileEffect ~= "" then
+				projectile.SpriteRendererComponent.SpriteRUID = projectileEffect
+			end
+		end, 0.5)
+		
+		_TimerService:SetTimerOnce(function()
+			if isvalid(self.Entity) then
+				self:InitialAttackAction()
+			end
+		end, 0.7)
+	end
+
+	@ExecSpace("ServerOnly")
+	method void ExecuteMeleeSkill(string skillId, number damage, string skillEffect, string hitEffect)
+		if skillEffect ~= "" then
+			local lookDir = 1
+			if self.Entity.PlayerControllerComponent ~= nil then
+				lookDir = self.Entity.PlayerControllerComponent.LookDirectionX
+			end
+			self:PlaySkillEffectClient(skillEffect, lookDir)
+		end
+		
+		local attackOffset = Vector2(self.AttackOffsetX, self.AttackOffsetY)
+		self:Attack(self.AttackSize, attackOffset, "skill_" .. skillId, CollisionGroups.Monster)
+		self:Attack(self.AttackSize, attackOffset, "skill_" .. skillId, CollisionGroups.Boss)
+		
+		_TimerService:SetTimerOnce(function()
+			if isvalid(self.Entity) then
+				self:InitialAttackAction()
+			end
+		end, 0.2)
+		
+		local effectPos = self.Entity.TransformComponent.Position + Vector3(1.5,0,0)
+		local monsterHitEffect = _EffectService:PlayEffect(hitEffect, self.Entity, effectPos, 0,Vector3.one, false)
+	end
+
+	method integer CalcDamage(Entity attacker, Entity defender, string attackInfo)
+		if attacker ~= nil and attacker.PlayerInfo ~= nil then
+			if attackInfo ~= nil and string.sub(attackInfo, 1, 6) == "skill_" then
+				local skillId = string.sub(attackInfo, 7)
+				local sd = _SkillDataSet:GetSkillDataBySkillId(tonumber(skillId))
+				if sd ~= nil then
+					local xDamage = sd.xDamage or 100
+					return math.max(1, math.floor(attacker.PlayerInfo.FinalAtk * xDamage ))
+				end
+			end
+			return math.max(1, attacker.PlayerInfo.FinalAtk)
+		end
+		return 1
+	end
+
+	method boolean CalcCritical(Entity attacker, Entity defender, string attackInfo)
+		if self.Entity.PlayerInfo == nil then
+			return false
+		end
+		
+		local isCritical = _UtilLogic:RandomDouble() < self.Entity.PlayerInfo.FinalCritRate
+		return isCritical
+	end
+
+	method float GetCriticalDamageRate()
+		if self.Entity.PlayerInfo == nil then
+			return 1.5
+		end
+		
+		return self.Entity.PlayerInfo.FinalCritDmg
+	end
+
+	method void InitialAttackAction()
+		if self.Entity ~= nil and self.Entity.AvatarBodyActionSelectorComponent ~= nil then
+			self.Entity.AvatarBodyActionSelectorComponent.ActionState = MapleAvatarBodyActionState.Stand
+		end
+		self.IsAttacking = false
+	end
+
+	@ExecSpace("ServerOnly")
+	method void OnProjectileHit(Entity hitEntity, Vector3 hitPos, number damage, string hitEffectRUID, string skillSoundRUID)
+		if hitEntity ~= nil then
+		    local effectPos = self.Entity.TransformComponent.Position + Vector3(1.5,0,0)
+		    local monsterHitEffect = _EffectService:PlayEffect(hitEffectRUID, self.Entity, effectPos, 0,Vector3.one*3, false)
+		end
+		
+		if skillSoundRUID ~= "" then
+			self:PlayProjectileHitSoundClient(skillSoundRUID)
+		end
+		
+		if damage > 0 then
+			if hitEntity.HitComponent ~= nil then
+				hitEntity.HitComponent:OnHit(self.Entity, math.floor(damage), false, "", 1)
+			end
+		end
+	end
+
+	@ExecSpace("Client")
+	method void PlayProjectileHitSoundClient(string soundRUID)
+		_SoundService:PlaySound(soundRUID, 1.0)
+	end
+
+	@ExecSpace("Client")
+	method void PlaySkillEffectClient(string skillEffect, number lookDir)
+		if self.Entity == nil then return end
+		local effectPos = self.Entity.TransformComponent.Position
+		local options = { ["FlipX"] = lookDir > 0 }
+		_EffectService:PlayEffect(skillEffect, self.Entity, effectPos, 0, Vector3.one, false, options)
+	end
+
+end

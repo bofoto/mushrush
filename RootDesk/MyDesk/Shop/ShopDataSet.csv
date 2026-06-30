@@ -1,0 +1,11 @@
+﻿ShopId,Name,Price,ItemRUID,Type,ItemStats,Value
+1,돌돌 신문지,300,48e0a6d986534630b3a7a8193493fb64,Weapon,FinalAtk,10
+2,몽둥이,600,ce073997978f4248b03c628dad9bbe11,Weapon,FinalAtk,15
+11,신문 모자,300,ba6bbb0fc8ea4dcfa6ca1a2f1b721c29,Helmet,FinalCritRate,30
+12,머리띠,600,274b50c184c047d8abf1b520c958ce98,Helmet,FinalCritRate,60
+101,누더기 옷,300,f96bbf8b91974820869b68fd7a041bed,Suit,FinalCritDmg,3
+102,도복,600,c19246603ccf4c19a1aa6cfcc72d1222,Suit,FinalCritDmg,4
+1001,신문지,300,06dc1ba50bda4ed4a14fad070d4d458e,Cape,AttackInterval,0.2
+1002,쓸만한 망토,600,f84be1fdafee4720b824e49aa4514c9c,Cape,AttackInterval,0.1
+10001,붕대 신발,300,fd309a15dac64be2bc5657449eeacb60,Shoes,IdleGold,5
+10002,검정 고무신,600,10fb8bbf502e4302ab7ca06118769e72,Shoes,IdleGold,10

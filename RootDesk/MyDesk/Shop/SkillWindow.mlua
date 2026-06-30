@@ -1,0 +1,93 @@
+@Logic
+script SkillWindow extends Logic
+
+	method void OnBeginPlay()
+		if not self:IsClient() then return end
+		self._T.slots = {}
+		self._T.prevOwnedIds = ""
+		self:LoadSkillSlots()
+	end
+
+	@ExecSpace("ClientOnly")
+	method void LoadSkillSlots()
+		local skillWindow = _EntityService:GetEntityByPath("/ui/DefaultGroup/SkillWindow")
+		if skillWindow == nil then return end
+		
+		local templateSlot = skillWindow:GetChildByName("SkillSlot")
+		if templateSlot == nil then return end
+		templateSlot.Enable = false
+		
+		for id, data in pairs(self._T.slots) do
+			if isvalid(data.slot) then
+				_EntityService:Destroy(data.slot)
+			end
+		end
+		self._T.slots = {}
+		
+		local pi = _UserService.LocalPlayer.PlayerInfo
+		if pi == nil then return end
+		
+		local ownedIds = pi.OwnedSkillIds or ""
+		if ownedIds == "" then return end
+		
+		for id in ownedIds:gmatch("[^,]+") do
+		local sd = _SkillDataSet:GetSkillDataBySkillId(tonumber(id))
+		if sd ~= nil then
+			local skillIconRUID = sd.SkinIconRUID or ""
+			local cooldown = sd.Cooldown or 10
+		
+				local slot = templateSlot:Clone("SkillSlot_" .. id)
+				slot.Enable = true
+		
+				local iconEntity = slot:GetChildByName("SkillIcon")
+				if iconEntity ~= nil and iconEntity.SpriteGUIRendererComponent ~= nil and skillIconRUID ~= "" then
+					iconEntity.SpriteGUIRendererComponent.ImageRUID.DataId = "thumbnail://" .. skillIconRUID
+				end
+		
+				local overlay = slot:GetChildByName("CooldownOverlay")
+				if overlay ~= nil and overlay.SpriteGUIRendererComponent ~= nil then
+					overlay.SpriteGUIRendererComponent.FillMethod    = FillMethodType.Radial360
+					overlay.SpriteGUIRendererComponent.FillClockWise = true
+					overlay.SpriteGUIRendererComponent.FillAmount    = 0
+				end
+		
+				self._T.slots[id] = { slot = slot, cooldown = cooldown, overlay = overlay }
+			end
+		end
+	end
+
+	method void OnUpdate(number delta)
+		if not self:IsClient() then return end
+		
+		local pi = _UserService.LocalPlayer.PlayerInfo
+		if pi == nil then return end
+		
+		local ownedIds = pi.OwnedSkillIds or ""
+		if ownedIds ~= self._T.prevOwnedIds then
+			self._T.prevOwnedIds = ownedIds
+			self:LoadSkillSlots()
+			return
+		end
+		
+		local currentTime = _UtilLogic.ElapsedSeconds
+		local pac = _UserService.LocalPlayer.PlayerAttackComponent
+		if pac == nil then return end
+		
+		for id, data in pairs(self._T.slots) do
+			if not isvalid(data.slot) then
+				self._T.slots[id] = nil
+			elseif data.overlay ~= nil and isvalid(data.overlay) and data.overlay.SpriteGUIRendererComponent ~= nil then
+				local lastUse = 0
+				if     id == "1" then lastUse = pac.SkillCooldown1
+				elseif id == "2" then lastUse = pac.SkillCooldown2
+				elseif id == "3" then lastUse = pac.SkillCooldown3
+				end
+		
+				local remaining  = (lastUse + data.cooldown) - currentTime
+				local fillAmount = math.max(0, math.min(1, remaining / data.cooldown))
+				data.overlay.SpriteGUIRendererComponent.FillAmount = fillAmount
+			end
+		end
+	end
+
+end

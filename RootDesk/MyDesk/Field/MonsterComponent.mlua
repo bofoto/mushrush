@@ -1,0 +1,149 @@
+@Component
+script MonsterComponent extends Component
+
+	property string MonsterId = ""
+
+	property string MonsterName = ""
+
+	property number CurrentHp = 0
+
+	property number MaxHp = 0
+
+	property number RewardGold = 0
+
+	property string SpriteRUID = ""
+
+	property number ScaleX = 1
+
+	property number ScaleY = 1
+
+	property number TriggerWidth = 1
+
+	property number TriggerHeight = 1
+
+	property boolean IsDead = false
+
+	@ExecSpace("ServerOnly")
+	method void SetMonsterIdAndLoad(string monsterId)
+		self.MonsterId = tostring(monsterId)
+		self.IsDead = false
+		self:LoadStatFromDataSet()
+	end
+
+	@ExecSpace("ServerOnly")
+	method void LoadStatFromDataSet()
+		if self.MonsterId == nil or self.MonsterId == "" then
+			return
+		end
+		
+		local dataset = _DataService:GetTable("NormalMonsterDataSet")
+		if dataset == nil then
+			return
+		end
+		
+		local row = dataset:FindRow("MonsterId", tostring(self.MonsterId))
+		if row == nil then
+			return
+		end
+		
+		self.MonsterName = row:GetItem("Name")
+		self.MaxHp = tonumber(row:GetItem("MaxHp"))
+		self.CurrentHp = self.MaxHp
+		self.RewardGold = tonumber(row:GetItem("RewardGold"))
+		self.SpriteRUID = row:GetItem("SpriteRUID")
+		self.ScaleX = tonumber(row:GetItem("ScaleX"))
+		self.ScaleY = tonumber(row:GetItem("ScaleY"))
+		self.TriggerWidth = tonumber(row:GetItem("TriggerWidth"))
+		self.TriggerHeight = tonumber(row:GetItem("TriggerHeight"))
+		
+		self:ApplyVisualFromLoadedData()
+		
+		if self.Entity ~= nil and self.Entity.HitComponent ~= nil then
+			self.Entity.HitComponent.BoxSize = Vector2(self.TriggerWidth, self.TriggerHeight)
+		end
+	end
+
+	@ExecSpace("ServerOnly")
+	method void ApplyVisualFromLoadedData()
+		if self.Entity == nil then
+			return
+		end
+		
+		if self.SpriteRUID ~= nil and self.SpriteRUID ~= "" then
+			if self.Entity.SpriteRendererComponent ~= nil then
+				self.Entity.SpriteRendererComponent.SpriteRUID = self.SpriteRUID
+			end
+		
+			local childRenderers = self.Entity:GetChildComponentsByTypeName("SpriteRendererComponent", true)
+			if childRenderers ~= nil then
+				for _, rendererComponent in pairs(childRenderers) do
+					if rendererComponent ~= nil and rendererComponent.Entity ~= nil and rendererComponent.Entity.SpriteRendererComponent ~= nil then
+						rendererComponent.Entity.SpriteRendererComponent.SpriteRUID = self.SpriteRUID
+					end
+				end
+			end
+		end
+		
+		if self.Entity.HitComponent ~= nil then
+			self.Entity.HitComponent.BoxSize = Vector2(self.TriggerWidth, self.TriggerHeight)
+		end
+	end
+
+	@ExecSpace("ServerOnly")
+	method void ApplyDamage(Entity attackerEntity, number damage)
+		if self.IsDead then
+			return
+		end
+		
+		if damage == nil then
+			damage = 1
+		end
+		
+		damage = math.max(tonumber(damage) or 1, 1)
+		self.CurrentHp = self.CurrentHp - damage
+		
+		if self.CurrentHp <= 0 then
+			self:HandleDeath(attackerEntity)
+		end
+	end
+
+	@ExecSpace("ServerOnly")
+	method void HandleDeath(Entity killerEntity)
+		if self.IsDead then
+			return
+		end
+		
+		self.IsDead = true
+		self.CurrentHp = 0
+		local stageManager = _StageManager
+		
+		local reward = math.max(tonumber(self.RewardGold) or 0, 0)
+		
+		if killerEntity ~= nil and killerEntity.PlayerInfo ~= nil then
+			local beforeGold = killerEntity.PlayerInfo.GoldWalet
+			killerEntity.PlayerInfo.GoldWalet = beforeGold + reward
+		end
+		
+		_TimerService:SetTimerOnce(function()
+			if self.Entity ~= nil and isvalid(self.Entity) then
+			_EntityService:Destroy(self.Entity)
+			end
+		end, 0.2)
+	end
+
+	@ExecSpace("ServerOnly")
+	@EventSender("Self")
+	handler HandleHitEvent(HitEvent event)
+		if self.IsDead then
+			return
+		end
+		
+		local totalDamage = tonumber(event.TotalDamage) or 0
+		if totalDamage <= 0 then
+			return
+		end
+		
+		self:ApplyDamage(event.AttackerEntity, totalDamage)
+	end
+
+end

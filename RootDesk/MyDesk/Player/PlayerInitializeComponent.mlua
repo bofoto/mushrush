@@ -1,0 +1,96 @@
+@Component
+script PlayerInitializeComponent extends Component
+
+	@Sync
+	property integer LoadRetryCount = 0
+
+	@Sync
+	property integer MaxLoadRetryCount = 10
+
+	method void OnBeginPlay()
+		--플레이어 키 입력 막기
+		local playerController = self.Entity.PlayerControllerComponent
+		if playerController == nil then
+			return
+		end
+		
+		playerController:RemoveAllActionKeyByActionName("MoveUp")
+		playerController:RemoveAllActionKeyByActionName("MoveDown")
+		playerController:RemoveAllActionKeyByActionName("MoveLeft")
+		playerController:RemoveAllActionKeyByActionName("MoveRight")
+		playerController:RemoveAllActionKeyByActionName("Jump")
+		playerController:RemoveAllActionKeyByActionName("Attack")
+		playerController:RemoveAllActionKeyByActionName("Sit")
+		
+		
+		--플레이어 카메라 설정
+		local playerCam = self.Entity.CameraComponent
+		if playerCam == nil then
+			return
+		end
+		
+		--playerCam.CameraOffset = Vector2(2.25, 0)
+		playerCam.DeadZone = Vector2(0,0)
+		playerCam.SoftZone = Vector2(0,0)
+		playerCam.ZoomRatio = 150
+		
+		self:DataLoad()
+		
+		if _StageManager ~= nil then
+			_StageManager:OnPlayerReady(self.Entity)
+		end
+	end
+
+	@ExecSpace("ServerOnly")
+	method void DataLoad()
+		if self.Entity == nil or self.Entity.PlayerComponent == nil then
+			if self.LoadRetryCount < self.MaxLoadRetryCount then
+				self.LoadRetryCount = self.LoadRetryCount + 1
+				_TimerService:SetTimerOnce(function()
+				self:DataLoad()
+				end, 0.2)
+			end
+			return
+		end
+		
+		local userId = self.Entity.PlayerComponent.UserId
+		if userId == nil or userId == "" then
+			if self.LoadRetryCount < self.MaxLoadRetryCount then
+				self.LoadRetryCount = self.LoadRetryCount + 1
+				_TimerService:SetTimerOnce(function()
+				self:DataLoad()
+				end, 0.2)
+			end
+			return
+		end
+		
+		local userStorage = _DataStorageService:GetUserDataStorage(userId)
+		if userStorage == nil then
+			return
+		end
+		
+		
+		if self.Entity == nil or self.Entity.PlayerComponent == nil or self.Entity.PlayerInfo == nil then
+		return
+		end
+		
+		local playerInfoErrorCode, loadPlayerInfoJson = userStorage:GetAndWait("PlayerInfo")
+		local loadPlayerInfoTable = {}
+		
+		if playerInfoErrorCode == 0  then
+			if loadPlayerInfoJson ~= nil and loadPlayerInfoJson ~= "" then
+			loadPlayerInfoTable = _HttpService:JSONDecode(loadPlayerInfoJson)
+				if loadPlayerInfoTable == nil then
+				loadPlayerInfoTable = {}
+				end
+			end
+		end
+		
+		self.Entity.PlayerInfo:Load(loadPlayerInfoTable)
+		
+		log("[입장] PlayerInfo / AtkLv="..tostring(self.Entity.PlayerInfo.AtkLv).." CritRateLv="..tostring(self.Entity.PlayerInfo.CritRateLv).." CritDmgLv="..tostring(self.Entity.PlayerInfo.CritDmgLv).." GoldWalet="..tostring(self.Entity.PlayerInfo.GoldWalet).." LastStageId="..tostring(self.Entity.PlayerInfo.LastStageId))
+		
+		self.LoadRetryCount = 0
+	end
+
+end

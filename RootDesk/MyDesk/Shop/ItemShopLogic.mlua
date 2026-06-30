@@ -1,0 +1,189 @@
+@Logic
+script ItemShopLogic extends Logic
+
+	method void OnBeginPlay()
+		if self:IsClient() then
+			local shopBtn = _EntityService:GetEntityByPath("/ui/DefaultGroup/ItemShopBtn")
+			local shopBtnFunction = function()
+				local shopUI = _EntityService:GetEntityByPath("/ui/ItemShopUI")
+				shopUI.Enable = true
+				self:RefreshEquipButtonStates()
+			end
+			shopBtn:ConnectEvent(ButtonClickEvent, shopBtnFunction)
+			
+			
+			local shopCloseBtn = _EntityService:GetEntityByPath("/ui/ItemShopUI/UISprite/ShopCloseBtn")
+			local shopCloseBtnFunction = function()
+				local shopUI = _EntityService:GetEntityByPath("/ui/ItemShopUI")
+				shopUI.Enable = false
+			end
+			shopCloseBtn:ConnectEvent(ButtonClickEvent, shopCloseBtnFunction)
+			
+			self:LoadShopItem()
+		end
+	end
+
+	@ExecSpace("ClientOnly")
+	method void LoadShopItem()
+		if self._T.equipShopLoaded == true then return end
+		self._T.equipShopLoaded = true
+		
+		local shopWindow = _EntityService:GetEntityByPath("/ui/ItemShopUI/UISprite/ShopWindow")
+		local templateItem = shopWindow:GetChildByName("ItemSlot")
+		templateItem.Enable = false
+		
+		local shopDataSet = _DataService:GetTable("ShopDataSet")
+		
+		for i = 1, shopDataSet:GetRowCount() do
+			local shopId = shopDataSet:GetCell(i, "ShopId")
+			local name = shopDataSet:GetCell(i, "Name")
+			local price = shopDataSet:GetCell(i, "Price")
+			local itemImage = shopDataSet:GetCell(i, "ItemRUID")
+		
+			local item = templateItem:Clone("ShopItem_" .. shopId)
+			item.Enable = true
+		
+			local itemNameEntity = item:GetChildByName("ItemName")
+			if itemNameEntity ~= nil then
+				itemNameEntity.TextGUIRendererComponent.Text = name
+			end
+		
+			local itemPriceEntity = item:GetChildByName("ItemPrice")
+			if itemPriceEntity ~= nil then
+				itemPriceEntity.TextGUIRendererComponent.Text = price
+			end
+		
+			local itemImageEntity = item:GetChildByName("ItemImage")
+			if itemImageEntity ~= nil then
+				itemImageEntity.SpriteGUIRendererComponent.ImageRUID.DataId = "thumbnail://" .. itemImage
+			end
+			
+			local buyBtnEntity = item:GetChildByName("ItemBuyBtn")
+			if buyBtnEntity ~= nil then
+				local capturedId = shopId
+				buyBtnEntity:ConnectEvent(ButtonClickEvent, function()
+					self:Buy(capturedId)
+				end)
+			end
+		end
+		self:RefreshEquipButtonStates()
+	end
+
+	@ExecSpace("Server")
+	method void Buy(string itemId)
+		local shopItemInfo = _DataService:GetTable("ShopDataSet")
+		
+		local row = shopItemInfo:FindRow("ShopId", itemId)
+		if row == nil then
+			return
+		end
+		
+		local price = tonumber(row:GetItem("Price"))
+		local itemRUID = row:GetItem("ItemRUID")   
+		local itemType = row:GetItem("Type")   
+		local itemStats = row:GetItem("ItemStats")
+		itemStats = itemStats:match("^%s*(.-)%s*$")           
+		local value = tonumber(row:GetItem("Value"))      
+		
+		local playerEntity = _UserService:GetUserEntityByUserId(senderUserId)
+		if playerEntity == nil or playerEntity.PlayerInfo == nil then
+			return
+		end
+		
+		local playerInfo = playerEntity.PlayerInfo
+		
+		if playerInfo.GoldWalet < price then
+			return
+		end
+		
+		playerInfo.GoldWalet = playerInfo.GoldWalet - price
+		
+		local shopIdNum = tonumber(itemId)
+		if itemType == "Weapon" then
+			playerInfo.EquippedWeaponId = shopIdNum
+		elseif itemType == "Helmet" then
+			playerInfo.EquippedHelmetId = shopIdNum
+		elseif itemType == "Suit" then
+			playerInfo.EquippedSuitId = shopIdNum
+		elseif itemType == "Cape" then
+			playerInfo.EquippedCapeId = shopIdNum
+		elseif itemType == "Shoes" then
+			playerInfo.EquippedShoesId = shopIdNum
+		end
+		
+		if itemStats == "FinalAtk" then
+			playerInfo.EquipAtk = value
+		elseif itemStats == "FinalCritRate" then
+			playerInfo.EquipCritRate = value / 100
+		elseif itemStats == "FinalCritDmg" then
+			playerInfo.EquipCritDmg = value / 10
+		elseif itemStats == "AttackInterval" then
+			playerInfo.EquipAttackIntervalReduction = value
+		elseif itemStats == "IdleGold" then
+			playerInfo.IdleGoldLv = value
+		end
+		
+		playerInfo:RecalculateDerivedStats()
+		playerInfo:ApplyCostume()
+		playerInfo:AddOwnedEquip(itemId)
+		self:ResponseBuy(itemId, senderUserId)
+	end
+
+	@ExecSpace("Client")
+	method void ResponseBuy(string shopId, string userId)
+		local shopWindow = _EntityService:GetEntityByPath("/ui/ItemShopUI/UISprite/ShopWindow")
+		if shopWindow == nil then return end
+		
+		local itemEntity = shopWindow:GetChildByName("ShopItem_" .. shopId)
+		if itemEntity ~= nil then
+			local buyBtn = itemEntity:GetChildByName("ItemBuyBtn")
+			if buyBtn ~= nil then
+				buyBtn.Enable = false
+			end
+		end
+		
+	end
+
+	@ExecSpace("ClientOnly")
+	method void RefreshEquipButtonStates()
+		local shopWindow = _EntityService:GetEntityByPath("/ui/ItemShopUI/UISprite/ShopWindow")
+		if shopWindow == nil then return end
+		
+		local playerInfo= _UserService.LocalPlayer.PlayerInfo
+		if playerInfo == nil then return end
+		
+		local ownedIds = playerInfo.OwnedEquipIds or ""
+		local equippedWeaponId = tostring(playerInfo.EquippedWeaponId or 0)
+		local equippedHelmetId = tostring(playerInfo.EquippedHelmetId or 0)
+		local equippedSuitId   = tostring(playerInfo.EquippedSuitId   or 0)
+		local equippedCapeId   = tostring(playerInfo.EquippedCapeId   or 0)
+		local equippedShoesId  = tostring(playerInfo.EquippedShoesId  or 0)
+		
+		local shopDataSet = _DataService:GetTable("ShopDataSet")
+		for i = 1, shopDataSet:GetRowCount() do
+			local shopId   = shopDataSet:GetCell(i, "ShopId")
+			local itemType = shopDataSet:GetCell(i, "Type")
+			
+			local item = shopWindow:GetChildByName("ShopItem_" .. shopId)
+			if item ~= nil then
+				local isEquipped = false
+				if     itemType == "Weapon" and equippedWeaponId == shopId then isEquipped = true
+				elseif itemType == "Helmet" and equippedHelmetId == shopId then isEquipped = true
+				elseif itemType == "Suit"   and equippedSuitId   == shopId then isEquipped = true
+				elseif itemType == "Cape"   and equippedCapeId   == shopId then isEquipped = true
+				elseif itemType == "Shoes"  and equippedShoesId  == shopId then isEquipped = true
+				end
+		
+				local isOwned = ("," .. ownedIds .. ","):find("," .. shopId .. ",", 1, true) ~= nil
+		
+				local buyBtn = item:GetChildByName("ItemBuyBtn")
+				if buyBtn ~= nil then
+					if isOwned then
+						buyBtn.Enable = false
+					end
+				end
+			end
+		end
+	end
+
+end
