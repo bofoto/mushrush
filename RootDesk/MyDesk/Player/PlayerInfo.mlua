@@ -154,8 +154,8 @@ script PlayerInfo extends Component
 		self.AtkLv             = tonumber(t["AtkLv"])            or 0
 		self.CritRateLv        = tonumber(t["CritRateLv"])       or 0
 		self.CritDmgLv         = tonumber(t["CritDmgLv"])        or 0
-		self.GoldWalet         = --[[tonumber(t["GoldWalet"])        or 0 --]]999999999
-		self.BeautyWalet       = --[[tonumber(t["BeautyWalet"])      or 0 --]]999999999
+		self.GoldWalet         = tonumber(t["GoldWalet"])        or 1000
+		self.BeautyWalet       = tonumber(t["BeautyWalet"])      or 100
 		self.IdleGoldLv        = tonumber(t["IdleGoldLv"])       or 1
 		self.OfflineGoldLv     = tonumber(t["OfflineGoldLv"])    or 1
 		self.EquippedWeaponId  = tonumber(t["EquippedWeaponId"]) or 0
@@ -301,6 +301,7 @@ script PlayerInfo extends Component
 
 	@ExecSpace("ServerOnly")
 	method void CalculateOfflineReward()
+		-- Calculates offline gold reward based on elapsed time and triggers a toast notification on the client.
 		if self.LastLoginTime == 0 then
 			return
 		end
@@ -326,6 +327,9 @@ script PlayerInfo extends Component
 			local offlineHours = math.floor(offlineMinutes / 60)
 			local remainMinutes = offlineMinutes % 60
 			log("[OfflineReward] 오프라인 시간: " .. offlineHours .. "시간 " .. remainMinutes .. "분, 보상: +" .. reward .. "G")
+			
+			local msg = "방치 보상: 오프라인 동안 +" .. tostring(reward) .. " 골드를 획득했습니다!"
+			_UIToast:ShowMessage(msg, self.Entity.PlayerComponent.UserId)
 		end
 	end
 

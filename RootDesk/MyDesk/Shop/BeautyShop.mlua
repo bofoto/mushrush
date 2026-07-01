@@ -9,6 +9,16 @@ script BeautyShop extends Logic
 					local beautyUI = _EntityService:GetEntityByPath("/ui/BeautyUI")
 					if beautyUI ~= nil then beautyUI.Enable = true end
 					self:RefreshBeautyButtonStates()
+					
+					-- Close other shops
+					local playerInfoUI = _EntityService:GetEntityByPath("/ui/PlayerInfo")
+					if playerInfoUI ~= nil then playerInfoUI.Enable = false end
+					local gymUI = _EntityService:GetEntityByPath("/ui/GymUI")
+					if gymUI ~= nil then gymUI.Enable = false end
+					local itemShopUI = _EntityService:GetEntityByPath("/ui/ItemShopUI")
+					if itemShopUI ~= nil then itemShopUI.Enable = false end
+					local skillShopUI = _EntityService:GetEntityByPath("/ui/SkillShop")
+					if skillShopUI ~= nil then skillShopUI.Enable = false end
 				end)
 			end
 		

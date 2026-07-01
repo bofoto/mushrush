@@ -8,6 +8,16 @@ script Gym extends Logic
 				local gymUI = _EntityService:GetEntityByPath("/ui/GymUI")
 				gymUI.Enable = true
 				self:RefreshGymStates()
+				
+				-- Close other shops
+				local playerInfoUI = _EntityService:GetEntityByPath("/ui/PlayerInfo")
+				if playerInfoUI ~= nil then playerInfoUI.Enable = false end
+				local itemShopUI = _EntityService:GetEntityByPath("/ui/ItemShopUI")
+				if itemShopUI ~= nil then itemShopUI.Enable = false end
+				local skillShopUI = _EntityService:GetEntityByPath("/ui/SkillShop")
+				if skillShopUI ~= nil then skillShopUI.Enable = false end
+				local beautyUI = _EntityService:GetEntityByPath("/ui/BeautyUI")
+				if beautyUI ~= nil then beautyUI.Enable = false end
 			end
 			gymBtn:ConnectEvent(ButtonClickEvent, gymBtnFunction)
 		

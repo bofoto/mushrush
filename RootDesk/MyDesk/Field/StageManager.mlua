@@ -56,6 +56,7 @@ script StageManager extends Logic
 
 	@ExecSpace("ServerOnly")
 	method void MoveToStageByName(Entity playerEntity, string mapName, string normalMonsterId, string bossMonsterId, number clearRewardGold, integer nextStageId)
+		-- Moves the player to the specified map and cleans up existing monsters before spawning new ones.
 		if playerEntity == nil or playerEntity.PlayerComponent == nil then
 			return
 		end
@@ -67,11 +68,40 @@ script StageManager extends Logic
 		end
 		
 		playerEntity.PlayerComponent:MoveToMapPosition(mapName, Vector2(0, 0))
+		self:CleanUpMonsters(playerEntity)
 		
 		_TimerService:SetTimerOnce(function()
 			local lastSpawnPosition = self:SpawnNormalMonsterForStage(playerEntity, normalMonsterId)
 			self:SpawnBossMonsterForStage(playerEntity, bossMonsterId, lastSpawnPosition)
 		end, self.MONSTER_SPAWN_DELAY_SEC)
+	end
+
+	@ExecSpace("ServerOnly")
+	method void CleanUpMonsters(Entity playerEntity)
+		-- Finds and destroys any existing MonsterComponent and BossMonsterComponent entities in the current map.
+		if playerEntity == nil or playerEntity.Parent == nil then
+			return
+		end
+		
+		local parentEntity = playerEntity.Parent
+		
+		local monsterComps = parentEntity:GetChildComponentsByTypeName("script.MonsterComponent", true)
+		if monsterComps ~= nil then
+			for _, comp in ipairs(monsterComps) do
+				if comp ~= nil and comp.Entity ~= nil then
+					_EntityService:Destroy(comp.Entity)
+				end
+			end
+		end
+		
+		local bossComps = parentEntity:GetChildComponentsByTypeName("script.BossMonsterComponent", true)
+		if bossComps ~= nil then
+			for _, comp in ipairs(bossComps) do
+				if comp ~= nil and comp.Entity ~= nil then
+					_EntityService:Destroy(comp.Entity)
+				end
+			end
+		end
 	end
 
 	@ExecSpace("ServerOnly")
