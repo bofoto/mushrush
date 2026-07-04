@@ -93,4 +93,18 @@ script PlayerInitializeComponent extends Component
 		self.LoadRetryCount = 0
 	end
 
+	@ExecSpace("Client")
+	method void SetCameraOffsetForMap(string mapName)
+		-- Adjusts the camera offset dynamically based on the current map name, preserving the configured X offset.
+		local playerCam = self.Entity.CameraComponent
+		if playerCam == nil then return end
+		
+		local currentX = playerCam.CameraOffset.x
+		if mapName == "Stage_01" then
+			playerCam.CameraOffset = Vector2(currentX, -2.75)
+		else
+			playerCam.CameraOffset = Vector2(currentX, -3.75)
+		end
+	end
+
 end

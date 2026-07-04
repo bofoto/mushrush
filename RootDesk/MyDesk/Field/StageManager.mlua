@@ -70,6 +70,10 @@ script StageManager extends Logic
 		playerEntity.PlayerComponent:MoveToMapPosition(mapName, Vector2(0, 0))
 		self:CleanUpMonsters(playerEntity)
 		
+		if playerEntity.PlayerInitializeComponent ~= nil then
+			playerEntity.PlayerInitializeComponent:SetCameraOffsetForMap(mapName, playerEntity.PlayerComponent.UserId)
+		end
+		
 		_TimerService:SetTimerOnce(function()
 			local lastSpawnPosition = self:SpawnNormalMonsterForStage(playerEntity, normalMonsterId)
 			self:SpawnBossMonsterForStage(playerEntity, bossMonsterId, lastSpawnPosition)

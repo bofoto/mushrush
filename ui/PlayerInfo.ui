@@ -454,7 +454,7 @@
               },
               "OffsetMin": {
                 "x": 0.0,
-                "y": -150.0
+                "y": -80.0
               },
               "Pivot": {
                 "x": 0.5,
@@ -462,17 +462,17 @@
               },
               "RectSize": {
                 "x": 660.0,
-                "y": 150.0
+                "y": 80.0
               },
               "UIMode": 1,
               "UIVersion": 2,
               "anchoredPosition": {
                 "x": 330.0,
-                "y": -75.0
+                "y": -40.0
               },
               "Position": {
                 "x": 330.0,
-                "y": -75.0,
+                "y": -40.0,
                 "z": 0.0
               },
               "QuaternionRotation": {

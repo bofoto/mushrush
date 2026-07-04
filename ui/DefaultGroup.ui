@@ -119,7 +119,7 @@
           "name": "Button_Attack",
           "path": "/ui/DefaultGroup/Button_Attack",
           "nameEditable": true,
-          "enable": true,
+          "enable": false,
           "visible": true,
           "localize": true,
           "displayOrder": 0,
@@ -445,7 +445,7 @@
           "name": "Button_Jump",
           "path": "/ui/DefaultGroup/Button_Jump",
           "nameEditable": true,
-          "enable": true,
+          "enable": false,
           "visible": true,
           "localize": true,
           "displayOrder": 1,
@@ -771,7 +771,7 @@
           "name": "UIJoystick",
           "path": "/ui/DefaultGroup/UIJoystick",
           "nameEditable": true,
-          "enable": true,
+          "enable": false,
           "visible": true,
           "localize": true,
           "displayOrder": 2,
@@ -916,7 +916,7 @@
           "name": "UIChat",
           "path": "/ui/DefaultGroup/UIChat",
           "nameEditable": true,
-          "enable": true,
+          "enable": false,
           "visible": false,
           "localize": true,
           "displayOrder": 3,
@@ -1089,12 +1089,12 @@
               },
               "MobileOnly": false,
               "OffsetMax": {
-                "x": 515.1007,
-                "y": 835.3448
+                "x": 400.3745,
+                "y": -837.844
               },
               "OffsetMin": {
-                "x": 440.100677,
-                "y": 760.3448
+                "x": 325.3745,
+                "y": -912.844
               },
               "Pivot": {
                 "x": 0.5,
@@ -1107,12 +1107,12 @@
               "UIMode": 1,
               "UIVersion": 2,
               "anchoredPosition": {
-                "x": 477.600677,
-                "y": 797.8448
+                "x": 362.8745,
+                "y": -875.344
               },
               "Position": {
-                "x": 477.600677,
-                "y": 797.8448,
+                "x": 362.8745,
+                "y": -875.344,
                 "z": 0.0
               },
               "QuaternionRotation": {
@@ -1217,12 +1217,12 @@
               },
               "MobileOnly": false,
               "OffsetMax": {
-                "x": 418.874969,
-                "y": 835.3448
+                "x": 46.0002,
+                "y": -837.844
               },
               "OffsetMin": {
-                "x": 343.874969,
-                "y": 760.3448
+                "x": -28.9998016,
+                "y": -912.844
               },
               "Pivot": {
                 "x": 0.5,
@@ -1235,12 +1235,12 @@
               "UIMode": 1,
               "UIVersion": 2,
               "anchoredPosition": {
-                "x": 381.374969,
-                "y": 797.8448
+                "x": 8.500198,
+                "y": -875.344
               },
               "Position": {
-                "x": 381.374969,
-                "y": 797.8448,
+                "x": 8.500198,
+                "y": -875.344,
                 "z": 0.0
               },
               "QuaternionRotation": {
@@ -1475,12 +1475,12 @@
               },
               "MobileOnly": false,
               "OffsetMax": {
-                "x": -95.5581055,
-                "y": -768.7676
+                "x": -134.800964,
+                "y": -127.812408
               },
               "OffsetMin": {
-                "x": -490.369446,
-                "y": -868.7676
+                "x": -529.6123,
+                "y": -227.812408
               },
               "Pivot": {
                 "x": 0.5,
@@ -1493,12 +1493,12 @@
               "UIMode": 1,
               "UIVersion": 2,
               "anchoredPosition": {
-                "x": -292.963776,
-                "y": -818.7676
+                "x": -332.206635,
+                "y": -177.812408
               },
               "Position": {
-                "x": -292.963776,
-                "y": -818.7676,
+                "x": -332.206635,
+                "y": -177.812408,
                 "z": 0.0
               },
               "QuaternionRotation": {
@@ -1566,12 +1566,12 @@
               },
               "MobileOnly": false,
               "OffsetMax": {
-                "x": 245.631866,
-                "y": -770.552
+                "x": 206.388962,
+                "y": -129.596832
               },
               "OffsetMin": {
-                "x": -149.179474,
-                "y": -870.552
+                "x": -188.422379,
+                "y": -229.596832
               },
               "Pivot": {
                 "x": 0.5,
@@ -1584,12 +1584,12 @@
               "UIMode": 1,
               "UIVersion": 2,
               "anchoredPosition": {
-                "x": 48.2261963,
-                "y": -820.552
+                "x": 8.983292,
+                "y": -179.596832
               },
               "Position": {
-                "x": 48.2261963,
-                "y": -820.552,
+                "x": 8.983292,
+                "y": -179.596832,
                 "z": 0.0
               },
               "QuaternionRotation": {
@@ -1658,12 +1658,12 @@
               },
               "MobileOnly": false,
               "OffsetMax": {
-                "x": 323.717133,
-                "y": 835.344849
+                "x": -324.24,
+                "y": -837.8439
               },
               "OffsetMin": {
-                "x": 248.717133,
-                "y": 760.344849
+                "x": -399.24,
+                "y": -912.8439
               },
               "Pivot": {
                 "x": 0.5,
@@ -1676,12 +1676,12 @@
               "UIMode": 1,
               "UIVersion": 2,
               "anchoredPosition": {
-                "x": 286.217133,
-                "y": 797.844849
+                "x": -361.74,
+                "y": -875.3439
               },
               "Position": {
-                "x": 286.217133,
-                "y": 797.844849,
+                "x": -361.74,
+                "y": -875.3439,
                 "z": 0.0
               },
               "QuaternionRotation": {
