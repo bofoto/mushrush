@@ -21,7 +21,7 @@
           "name": "BeautyUI",
           "path": "/ui/BeautyUI",
           "nameEditable": true,
-          "enable": true,
+          "enable": false,
           "visible": true,
           "localize": true,
           "displayOrder": 4,
@@ -233,12 +233,12 @@
               },
               "MobileOnly": false,
               "OffsetMax": {
-                "x": 353.6069,
-                "y": 461.2452
+                "x": 353.6,
+                "y": 461.5
               },
               "OffsetMin": {
-                "x": -346.3931,
-                "y": -438.7548
+                "x": -346.4,
+                "y": -438.5
               },
               "Pivot": {
                 "x": 0.5,
@@ -251,12 +251,12 @@
               "UIMode": 1,
               "UIVersion": 2,
               "anchoredPosition": {
-                "x": 3.6069,
-                "y": 11.2451992
+                "x": 3.6,
+                "y": 11.5
               },
               "Position": {
-                "x": 3.6069,
-                "y": 11.2451992,
+                "x": 3.6,
+                "y": 11.5,
                 "z": 0.0
               },
               "QuaternionRotation": {
@@ -911,20 +911,20 @@
               },
               "MobileOnly": false,
               "OffsetMax": {
-                "x": 767.972961,
-                "y": -961.2036
+                "x": 757.399963,
+                "y": -1034.25
               },
               "OffsetMin": {
-                "x": 577.040466,
-                "y": -1024.03723
+                "x": 497.8,
+                "y": -1119.75
               },
               "Pivot": {
                 "x": 0.5,
                 "y": 0.5
               },
               "RectSize": {
-                "x": 190.9325,
-                "y": 62.8336029
+                "x": 259.6,
+                "y": 85.5
               },
               "UIMode": 1,
               "UIScale": {
@@ -934,8 +934,8 @@
               },
               "UIVersion": 2,
               "anchoredPosition": {
-                "x": 672.5067,
-                "y": -992.6204
+                "x": 627.6,
+                "y": -1077.0
               },
               "Rotation": {
                 "x": 0.0,
@@ -943,8 +943,8 @@
                 "z": 0.0
               },
               "Position": {
-                "x": 212.506714,
-                "y": -407.620422,
+                "x": 167.599976,
+                "y": -492.0,
                 "z": 0.0
               },
               "QuaternionRotation": {
@@ -1030,9 +1030,9 @@
                 "b": 1.0,
                 "a": 1.0
               },
-              "FontSize": 50.0,
+              "FontSize": 60.0,
               "IsLocalizationKey": false,
-              "MaxSize": 59.97,
+              "MaxSize": 60.0,
               "MinSize": 10.0,
               "OverrideSorting": false,
               "Text": "닫기",
